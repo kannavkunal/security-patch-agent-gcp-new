@@ -52,11 +52,17 @@ class Orchestrator:
         auth_url = repo_url.replace("https://", f"https://{token}@")
         logger.info(f"Cloning {repo_url} to {temp_dir}")
 
+        # Set environment variables to disable Git credential prompting
+        env = os.environ.copy()
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        env["GIT_ASKPASS"] = "echo"  # Disable password prompting
+
         result = subprocess.run(
             ["git", "clone", "--depth", "1", "--branch", branch, auth_url, temp_dir],
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=300,
+            env=env
         )
 
         if result.returncode != 0:
