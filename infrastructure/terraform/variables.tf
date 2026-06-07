@@ -1,7 +1,6 @@
 variable "project_id" {
-  description = "GCP Project ID"
+  description = "GCP Project ID - must be provided via GitHub Secrets or terraform.tfvars"
   type        = string
-  description = "GCP Project ID - must be provided"
 }
 
 variable "region" {

@@ -298,6 +298,18 @@ async def test_auth(api_key: str = Depends(verify_api_key)):
     }
 
 
+@app.get("/repositories")
+async def get_allowed_repositories():
+    """
+    Get list of allowed repositories that can be scanned
+    No authentication required - this is public information
+    """
+    return {
+        "repositories": ScanRequest.ALLOWED_REPOS,
+        "count": len(ScanRequest.ALLOWED_REPOS)
+    }
+
+
 @app.post("/scan", response_model=ScanResponse)
 async def trigger_scan(
     request: ScanRequest,

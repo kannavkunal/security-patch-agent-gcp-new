@@ -292,11 +292,8 @@
                 <div class="form-group">
                     <label for="repository">Repository</label>
                     <select id="repository">
-                        <option value="">Select a repository...</option>
-                        <option value="https://github.com/kannavkunal/vulnerable-python-api">vulnerable-python-api</option>
-                        <option value="https://github.com/kannavkunal/vulnerable-java-app">vulnerable-java-app</option>
-                        <option value="https://github.com/kannavkunal/vulnerable-node-service">vulnerable-node-service</option>
-                        <option value="https://github.com/kannavkunal/vulnerable-go-microservice">vulnerable-go-microservice</option>
+                        <option value="">Loading repositories...</option>
+                        <!-- Dynamically populated from GET /repositories API -->
                     </select>
                 </div>
                 <div class="form-group">
@@ -326,10 +323,7 @@
                         <label for="filterRepo">Filter by Repository</label>
                         <select id="filterRepo" onchange="loadScans()">
                             <option value="">All Repositories</option>
-                            <option value="kannavkunal/vulnerable-python-api">vulnerable-python-api</option>
-                            <option value="kannavkunal/vulnerable-java-app">vulnerable-java-app</option>
-                            <option value="kannavkunal/vulnerable-node-service">vulnerable-node-service</option>
-                            <option value="kannavkunal/vulnerable-go-microservice">vulnerable-go-microservice</option>
+                            <!-- Dynamically populated from GET /repositories API -->
                         </select>
                     </div>
                     <div class="form-group">
@@ -396,6 +390,53 @@
             setTimeout(() => {
                 alert.style.display = 'none';
             }, 5000);
+        }
+
+        async function loadRepositories() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/repositories`);
+                const data = await response.json();
+
+                if (response.ok && data.repositories) {
+                    // Populate scan repository dropdown
+                    const repoSelect = document.getElementById('repository');
+                    repoSelect.innerHTML = '<option value="">Select a repository...</option>';
+
+                    data.repositories.forEach(repoUrl => {
+                        const repoName = repoUrl.split('/').slice(-1)[0];  // Extract repo name
+                        const option = document.createElement('option');
+                        option.value = repoUrl;
+                        option.textContent = repoName;
+                        repoSelect.appendChild(option);
+                    });
+
+                    // Populate filter repository dropdown
+                    const filterSelect = document.getElementById('filterRepo');
+                    // Keep "All Repositories" option
+                    const allOption = filterSelect.querySelector('option[value=""]');
+                    filterSelect.innerHTML = '';
+                    if (allOption) filterSelect.appendChild(allOption);
+
+                    data.repositories.forEach(repoUrl => {
+                        const parts = repoUrl.split('/');
+                        const owner = parts[parts.length - 2];
+                        const repo = parts[parts.length - 1];
+                        const option = document.createElement('option');
+                        option.value = `${owner}/${repo}`;
+                        option.textContent = repo;
+                        filterSelect.appendChild(option);
+                    });
+
+                    console.log(`Loaded ${data.count} repositories from API`);
+                } else {
+                    console.error('Failed to load repositories:', data);
+                    showAlert('error', 'Failed to load repositories list');
+                }
+            } catch (error) {
+                console.error('Error loading repositories:', error);
+                // Fallback to empty state - user can still manually enter URL
+                document.getElementById('repository').innerHTML = '<option value="">Failed to load repositories</option>';
+            }
         }
 
         async function testConnection() {
@@ -563,9 +604,9 @@
             container.innerHTML = table;
         }
 
-        // Test connection on page load
+        // Load repositories and initialize on page load
         window.addEventListener('load', () => {
-            // Don't auto-test, let user enter API key first
+            loadRepositories();  // Load allowed repositories from API
             console.log('Security Patch Agent Dashboard Loaded');
         });
     </script>

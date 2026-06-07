@@ -384,6 +384,133 @@ http://LOADBALANCER_IP/static/index.html
 - Trigger scans via web interface
 - View scan history
 - No installation required
+- **Repository list loads dynamically** from backend API
+
+---
+
+## 📦 Managing Repositories
+
+### Default Whitelisted Repositories
+
+By default, the system can only scan these repositories:
+- `https://github.com/kannavkunal/vulnerable-python-api`
+- `https://github.com/kannavkunal/vulnerable-java-app`
+- `https://github.com/kannavkunal/vulnerable-node-service`
+- `https://github.com/kannavkunal/vulnerable-go-microservice`
+
+**Security:** Only whitelisted repositories can be scanned (prevents abuse)
+
+---
+
+### Adding Your Own Repositories
+
+**To add a new repository, you need to:**
+
+**Step 1: Update Application Code (2 files)**
+
+Edit both files and add your repository URL to the `ALLOWED_REPOS` list:
+
+**File 1:** `app/main.py` (around line 187)
+```python
+ALLOWED_REPOS: ClassVar[List[str]] = [
+    "https://github.com/kannavkunal/vulnerable-python-api",
+    "https://github.com/kannavkunal/vulnerable-java-app",
+    "https://github.com/kannavkunal/vulnerable-node-service",
+    "https://github.com/kannavkunal/vulnerable-go-microservice",
+    "https://github.com/YOUR_USERNAME/YOUR_NEW_REPO",  # ← Add here
+]
+```
+
+**File 2:** `app/worker.py` (around line 18)
+```python
+ALLOWED_REPOS = [
+    "https://github.com/kannavkunal/vulnerable-python-api",
+    "https://github.com/kannavkunal/vulnerable-java-app",
+    "https://github.com/kannavkunal/vulnerable-node-service",
+    "https://github.com/kannavkunal/vulnerable-go-microservice",
+    "https://github.com/YOUR_USERNAME/YOUR_NEW_REPO",  # ← Add here
+]
+```
+
+⚠️ **Important:** Both lists must match exactly!
+
+**Step 2: Deploy Updated Configuration**
+
+```bash
+# Commit changes
+git add app/main.py app/worker.py
+git commit -m "Add YOUR_NEW_REPO to allowed repositories"
+git push origin main
+
+# Deploy via GitHub Actions
+# Go to: Actions → "Deploy Application" → Run workflow
+```
+
+**Step 3: Verify Repository Appears in UI**
+
+The Web UI automatically fetches the repository list from the `/repositories` API endpoint. After deployment:
+
+1. Refresh the Web UI: `http://LOADBALANCER_IP/static/index.html`
+2. Open the **"Repository"** dropdown
+3. Your new repository should appear automatically!
+
+**No UI changes needed** - the dropdown is populated dynamically from the backend.
+
+---
+
+### Alternative: Use ConfigMap (Advanced)
+
+For easier repository management without code changes, you can use a Kubernetes ConfigMap:
+
+**Option A: Store in ConfigMap**
+
+```yaml
+# deployment/k8s-manifests/04-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-patch-agent-config
+  namespace: security-patch-agent
+data:
+  ALLOWED_REPOS: |
+    https://github.com/kannavkunal/vulnerable-python-api
+    https://github.com/kannavkunal/vulnerable-java-app
+    https://github.com/YOUR_USERNAME/YOUR_NEW_REPO
+```
+
+**Modify code to read from environment:**
+
+```python
+# app/main.py
+import os
+
+ALLOWED_REPOS: ClassVar[List[str]] = [
+    repo.strip() 
+    for repo in os.getenv("ALLOWED_REPOS", "").split("\n")
+    if repo.strip()
+]
+```
+
+**Then update ConfigMap and restart pods:**
+
+```bash
+kubectl apply -f deployment/k8s-manifests/04-configmap.yaml
+kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
+```
+
+**Pros:** No code changes needed to add repos  
+**Cons:** Requires ConfigMap edit + pod restart
+
+---
+
+### Complete Repository Onboarding Guide
+
+For a detailed step-by-step guide including:
+- Configuring GitHub webhooks
+- Testing PATCH and REVIEW modes
+- Troubleshooting
+
+See: **[REPOSITORY_ONBOARDING.md](REPOSITORY_ONBOARDING.md)**
 
 ---
 
