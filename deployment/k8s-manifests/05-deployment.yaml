@@ -72,9 +72,7 @@ spec:
         envFrom:
         - configMapRef:
             name: security-patch-agent-config
-        env:
-        - name: SCANNER_IMAGE
-          value: "us-central1-docker.pkg.dev/PROJECT_ID_PLACEHOLDER/security-patch-agent/api:latest"
+        # SCANNER_IMAGE is automatically constructed from GCP_PROJECT_ID by job_spawner.py
         resources:
           requests:
             cpu: 250m

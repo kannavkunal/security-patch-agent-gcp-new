@@ -24,7 +24,8 @@ class JobSpawner:
         self.project_id = os.getenv("GCP_PROJECT_ID")
         if not self.project_id:
             raise ValueError("GCP_PROJECT_ID environment variable must be set")
-        self.image = os.getenv("SCANNER_IMAGE", f"gcr.io/{self.project_id}/security-patch-agent:latest")
+        # Use Artifact Registry by default (can be overridden with SCANNER_IMAGE env var)
+        self.image = os.getenv("SCANNER_IMAGE", f"us-central1-docker.pkg.dev/{self.project_id}/security-patch-agent/api:latest")
 
     def create_scan_job(self, scan_id: str, repo_url: str, mode: str, branch: str = "main", pr_number: int = None):
         """

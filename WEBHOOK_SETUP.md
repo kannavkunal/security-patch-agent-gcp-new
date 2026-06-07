@@ -21,8 +21,8 @@ projects/security-patch-agent-gcp/secrets/github-webhook-secret/versions/latest
 
 Configure webhooks for all 4 vulnerable test repositories:
 
-1. https://github.com/kannavkunal/vulnerable-python-web
-2. https://github.com/kannavkunal/vulnerable-node-api
+1. https://github.com/kannavkunal/vulnerable-python-api
+2. https://github.com/kannavkunal/vulnerable-node-service
 3. https://github.com/kannavkunal/vulnerable-go-microservice
 4. https://github.com/kannavkunal/vulnerable-java-app
 
@@ -92,8 +92,8 @@ echo "Webhook Secret:"
 echo "47dca8eeae767c5f07f4967864feadcdcb34688f41022c2c8e7402662e474cd3"
 echo ""
 echo "Configure for these repositories:"
-echo "1. https://github.com/kannavkunal/vulnerable-python-web/settings/hooks"
-echo "2. https://github.com/kannavkunal/vulnerable-node-api/settings/hooks"
+echo "1. https://github.com/kannavkunal/vulnerable-python-api/settings/hooks"
+echo "2. https://github.com/kannavkunal/vulnerable-node-service/settings/hooks"
 echo "3. https://github.com/kannavkunal/vulnerable-go-microservice/settings/hooks"
 echo "4. https://github.com/kannavkunal/vulnerable-java-app/settings/hooks"
 ```
@@ -104,7 +104,7 @@ echo "4. https://github.com/kannavkunal/vulnerable-java-app/settings/hooks"
 
 1. Create a new branch in one of the vulnerable repos:
    ```bash
-   cd vulnerable-python-web
+   cd vulnerable-python-api
    git checkout -b test-webhook
    echo "# Test" >> README.md
    git add README.md
@@ -128,7 +128,7 @@ kubectl logs -n security-patch-agent -l app=security-patch-agent -c worker -f --
 
 You should see:
 ```
-INFO:__main__:Webhook: Queueing review scan for https://github.com/kannavkunal/vulnerable-python-web PR#1
+INFO:__main__:Webhook: Queueing review scan for https://github.com/kannavkunal/vulnerable-python-api PR#1
 INFO:__main__:Received scan request: {'scan_id': 'scan-...', 'mode': 'review', ...}
 ```
 

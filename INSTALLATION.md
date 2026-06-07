@@ -1162,7 +1162,7 @@ echo "https://console.cloud.google.com/monitoring/alerting/notifications?project
 The list of scannable repositories is configured in `.github/workflows/deploy-application.yml` at line ~185:
 
 ```yaml
---from-literal=VULNERABLE_REPOS="https://github.com/kannavkunal/vulnerable-python-web,https://github.com/kannavkunal/vulnerable-node-api,https://github.com/kannavkunal/vulnerable-go-microservice,https://github.com/kannavkunal/vulnerable-java-app" \
+--from-literal=VULNERABLE_REPOS="https://github.com/kannavkunal/vulnerable-python-api,https://github.com/kannavkunal/vulnerable-node-service,https://github.com/kannavkunal/vulnerable-go-microservice,https://github.com/kannavkunal/vulnerable-java-app" \
 ```
 
 **To add or remove repositories:**
@@ -1219,7 +1219,7 @@ curl -X POST http://$API_URL/scan \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $API_KEY_PRIMARY" \
   -d '{
-    "repo_url": "https://github.com/kannavkunal/vulnerable-python-web",
+    "repo_url": "https://github.com/kannavkunal/vulnerable-python-api",
     "mode": "patch",
     "branch": "main"
   }' | jq .
@@ -1302,8 +1302,8 @@ To enable automatic PR scanning (REVIEW mode), configure GitHub webhooks on your
 **Webhook Secret:** `47dca8eeae767c5f07f4967864feadcdcb34688f41022c2c8e7402662e474cd3`
 
 **Repositories to Configure:**
-1. https://github.com/kannavkunal/vulnerable-python-web
-2. https://github.com/kannavkunal/vulnerable-node-api
+1. https://github.com/kannavkunal/vulnerable-python-api
+2. https://github.com/kannavkunal/vulnerable-node-service
 3. https://github.com/kannavkunal/vulnerable-go-microservice
 4. https://github.com/kannavkunal/vulnerable-java-app
 
@@ -1367,8 +1367,8 @@ Test one of the configured repositories:
 
 ```bash
 # Clone a test repository
-git clone https://github.com/kannavkunal/vulnerable-python-web.git
-cd vulnerable-python-web
+git clone https://github.com/kannavkunal/vulnerable-python-api.git
+cd vulnerable-python-api
 
 # Create a test branch
 git checkout -b test-webhook-scan
@@ -1396,7 +1396,7 @@ kubectl logs -n security-patch-agent -l app=security-patch-agent -c worker -f --
 
 Expected output:
 ```
-INFO:__main__:Webhook: Queueing review scan for https://github.com/kannavkunal/vulnerable-python-web PR#1
+INFO:__main__:Webhook: Queueing review scan for https://github.com/kannavkunal/vulnerable-python-api PR#1
 INFO:__main__:Received scan request: {'scan_id': 'scan-...', 'mode': 'review', ...}
 ```
 
