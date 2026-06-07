@@ -2,9 +2,8 @@
 ## Security Patch Agent: AI-Powered Automated Vulnerability Remediation
 
 **Version:** 1.0  
-**Date:** June 6, 2026  
+**Date:** June 2026  
 **Author:** Kunal Kannav  
-**Submission:** Tessera 2026  
 **Category:** Security & Infrastructure Innovation  
 
 ---
@@ -525,7 +524,7 @@ gs://security-patch-evidence-{project}/
 - ✅ **95% reduction in audit prep** (automated evidence generation)
 - ✅ **1,196% ROI** ($97K annual savings vs $9K cost)
 
-**Why This Matters for Tessera:**
+**Key Differentiators:**
 - **Innovation:** First LLM-powered security patch generator with historical memory
 - **Impact:** Scalable solution to the industry-wide security debt crisis
 - **Implementation:** Production-ready GCP deployment with real results
@@ -537,7 +536,6 @@ gs://security-patch-evidence-{project}/
 
 ---
 
-**Prepared for:** Tessera 2026 Innovation Challenge  
 **Contact:** kannavkunal@gmail.com  
-**Demo:** https://github.com/kannavkunal/security-patch-agent-gcp-new  
-**Live System:** http://34.60.187.202
+**Repository:** https://github.com/kannavkunal/security-patch-agent-gcp-new  
+**Live Demo:** http://34.60.187.202

@@ -49,11 +49,18 @@ webhook-secret.txt
 
 # Internal review documents (for your prep, not for reviewers)
 submission-files/ASSIGNMENT_COMPLIANCE_CHECKLIST.md
+submission-files/FINAL_SUBMISSION_CHECKLIST.md
+submission-files/SUBMISSION_CHECKLIST.md
+submission-files/SUBMISSION_READY.md
+submission-files/VIDEO_TALKING_POINTS.md
+submission-files/CLEANUP_SUMMARY.md
+submission-files/evidence/
 DOCUMENT_REVIEW.md
 REPOSITORY_STATUS.md
 FILES_TO_EXCLUDE.md
 WHAT_TO_COMMIT.md
 REPO_STATUS_CLEAN.md
+GITHUB_STRUCTURE_PREVIEW.md
 VIDEO_DEMO_SCRIPT.md
 SUBMISSION_PREP_TODO.md
 SUBMISSION_SUMMARY.md
@@ -62,8 +69,8 @@ INSTALLATION_NEW.md
 INSTALLATION_SIMPLIFIED.md
 SWITCH_PROJECT_GUIDE.md
 capture_evidence.sh
-submission-files/evidence/
-submission-files/CLEANUP_SUMMARY.md
+DESIGN_NOTES.md
+PRD.md
 
 # Build artifacts
 *.tar.gz
