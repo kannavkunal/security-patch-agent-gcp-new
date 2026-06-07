@@ -703,6 +703,29 @@ gsutil lifecycle set /tmp/lifecycle.json gs://${BUCKET_NAME}/
 gsutil ls -L gs://${BUCKET_NAME}/
 ```
 
+### Step 6.3: Create Terraform State Bucket
+
+**IMPORTANT:** This bucket stores Terraform state and must be created BEFORE running any Terraform commands.
+
+```bash
+# Create Terraform state bucket (required for infrastructure deployment)
+gsutil mb -p $PROJECT_ID -l $REGION gs://security-patch-agent-gcp-terraform-state
+
+# Enable versioning (protects against accidental state corruption)
+gsutil versioning set on gs://security-patch-agent-gcp-terraform-state
+
+# Verify bucket created
+gsutil ls -b gs://security-patch-agent-gcp-terraform-state
+```
+
+**Why this bucket is needed:**
+- Stores Terraform state file
+- Enables team collaboration (shared state)
+- Prevents state conflicts in GitHub Actions
+- Required for `terraform init` to succeed
+
+**Note:** This is a one-time setup. The bucket persists across all deployments.
+
 ### Step 6.3: Create Pub/Sub Topic & Subscription
 
 ```bash
