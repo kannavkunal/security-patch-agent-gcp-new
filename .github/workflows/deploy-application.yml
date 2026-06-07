@@ -167,7 +167,9 @@ jobs:
 
         # Apply base resources first
         kubectl apply -f deployment/k8s-manifests/01-namespace.yaml
-        kubectl apply -f deployment/k8s-manifests/02-serviceaccount.yaml
+
+        # Replace PROJECT_ID_PLACEHOLDER in serviceaccount before applying
+        sed "s/PROJECT_ID_PLACEHOLDER/$PROJECT_ID/g" deployment/k8s-manifests/02-serviceaccount.yaml | kubectl apply -f -
 
         # Create/update ConfigMap from GitHub Secrets (NOT from static file)
         kubectl create configmap security-patch-agent-config \
@@ -190,7 +192,8 @@ jobs:
           --dry-run=client -o yaml | kubectl apply -f -
 
         # Apply remaining resources
-        kubectl apply -f deployment/k8s-manifests/05-deployment.yaml
+        # Replace PROJECT_ID_PLACEHOLDER in deployment before applying
+        sed "s/PROJECT_ID_PLACEHOLDER/$PROJECT_ID/g" deployment/k8s-manifests/05-deployment.yaml | kubectl apply -f -
         kubectl apply -f deployment/k8s-manifests/06-service.yaml
 
         # Update images for both containers
