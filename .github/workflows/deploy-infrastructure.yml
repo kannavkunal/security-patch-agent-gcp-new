@@ -75,7 +75,13 @@ jobs:
     - name: Terraform Init
       run: |
         cd infrastructure/terraform
-        terraform init -backend-config="bucket=${PROJECT_ID}-terraform-state"
+
+        # Create backend config file with dynamic bucket name
+        cat > backend.tfvars <<EOF
+bucket = "${PROJECT_ID}-terraform-state"
+EOF
+
+        terraform init -backend-config=backend.tfvars
 
     - name: Terraform Validate
       run: |
