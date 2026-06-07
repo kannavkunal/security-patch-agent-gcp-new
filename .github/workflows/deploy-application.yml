@@ -176,6 +176,10 @@ jobs:
           --from-literal=PUBSUB_TOPIC="security-scan-events" \
           --from-literal=PUBSUB_SUBSCRIPTION="scan-events-subscription" \
           --from-literal=K8S_NAMESPACE="$NAMESPACE" \
+          --from-literal=ALLOWED_REPO_OWNERS="kannavkunal" \
+          --from-literal=ALLOWED_REPO_PATTERN="vulnerable-*" \
+          --from-literal=EXCLUDED_REPOS="" \
+          --from-literal=REPO_CACHE_TTL="300" \
           -n $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 

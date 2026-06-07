@@ -5,8 +5,12 @@ import logging
 import re
 from typing import Tuple
 from google.cloud import pubsub_v1
+from google.cloud import secretmanager
 from concurrent import futures
 from app.job_spawner import JobSpawner
+from github import Github
+import fnmatch
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,13 +20,97 @@ if not PROJECT_ID:
     raise ValueError("GCP_PROJECT_ID environment variable must be set")
 SUBSCRIPTION_ID = os.getenv("PUBSUB_SUBSCRIPTION", "scan-events-subscription")
 
-# Whitelist of allowed repositories (must match main.py)
-ALLOWED_REPOS = [
-    "https://github.com/kannavkunal/vulnerable-python-api",
-    "https://github.com/kannavkunal/vulnerable-java-app",
-    "https://github.com/kannavkunal/vulnerable-node-service",
-    "https://github.com/kannavkunal/vulnerable-go-microservice"
-]
+# Repository filtering configuration (from ConfigMap - same as main.py)
+ALLOWED_REPO_OWNERS = os.getenv("ALLOWED_REPO_OWNERS", "kannavkunal").split(",")
+ALLOWED_REPO_PATTERN = os.getenv("ALLOWED_REPO_PATTERN", "vulnerable-*")
+EXCLUDED_REPOS = os.getenv("EXCLUDED_REPOS", "").split(",") if os.getenv("EXCLUDED_REPOS") else []
+REPO_CACHE_TTL = int(os.getenv("REPO_CACHE_TTL", "300"))  # 5 minutes default
+
+# Cache for allowed repositories
+_github_client = None
+_repo_cache = None
+_repo_cache_time = None
+
+
+def get_github_client():
+    """Lazy-initialize GitHub client with token from Secret Manager"""
+    global _github_client
+    if _github_client is None:
+        try:
+            client = secretmanager.SecretManagerServiceClient()
+            secret_name = f"projects/{PROJECT_ID}/secrets/github-token/versions/latest"
+            response = client.access_secret_version(request={"name": secret_name})
+            token = response.payload.data.decode("UTF-8").strip()
+            _github_client = Github(token)
+            logger.info("GitHub client initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize GitHub client: {e}")
+            return None
+    return _github_client
+
+
+def get_allowed_repositories():
+    """
+    Fetch allowed repositories from GitHub API with caching (same logic as main.py)
+    """
+    global _repo_cache, _repo_cache_time
+
+    # Return cached results if still valid
+    if _repo_cache is not None and _repo_cache_time is not None:
+        if (datetime.now() - _repo_cache_time).total_seconds() < REPO_CACHE_TTL:
+            logger.info(f"Returning cached repository list ({len(_repo_cache)} repos)")
+            return _repo_cache
+
+    logger.info("Fetching repositories from GitHub API...")
+
+    try:
+        github = get_github_client()
+        if github is None:
+            logger.warning("GitHub client not available, using empty repository list")
+            return []
+
+        allowed_repos = []
+
+        # Fetch repositories for each allowed owner
+        for owner in ALLOWED_REPO_OWNERS:
+            owner = owner.strip()
+            if not owner:
+                continue
+
+            try:
+                # Try as user first, then as organization
+                try:
+                    repos = github.get_user(owner).get_repos()
+                except:
+                    repos = github.get_organization(owner).get_repos()
+
+                for repo in repos:
+                    # Check pattern match
+                    if fnmatch.fnmatch(repo.name, ALLOWED_REPO_PATTERN):
+                        # Check not excluded
+                        if repo.name not in EXCLUDED_REPOS:
+                            repo_url = repo.html_url.rstrip('/')
+                            if repo_url not in allowed_repos:
+                                allowed_repos.append(repo_url)
+                                logger.info(f"  ✓ {repo.full_name}")
+                        else:
+                            logger.info(f"  ✗ {repo.full_name} (excluded)")
+
+            except Exception as e:
+                logger.error(f"Failed to fetch repos for owner '{owner}': {e}")
+                continue
+
+        # Update cache
+        _repo_cache = allowed_repos
+        _repo_cache_time = datetime.now()
+
+        logger.info(f"Discovered {len(allowed_repos)} allowed repositories")
+        return allowed_repos
+
+    except Exception as e:
+        logger.error(f"Failed to fetch repositories from GitHub: {e}")
+        # Return cached data even if expired, or empty list
+        return _repo_cache if _repo_cache is not None else []
 
 
 def validate_message(data: dict) -> Tuple[bool, str]:
@@ -62,9 +150,10 @@ def validate_message(data: dict) -> Tuple[bool, str]:
     if not re.match(r'^https://github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$', repo_url):
         return False, f"Invalid repo_url format: {repo_url}"
 
-    # Validate repo_url against whitelist
-    if repo_url not in ALLOWED_REPOS:
-        return False, f"Repository not in whitelist: {repo_url}. Allowed: {', '.join(ALLOWED_REPOS)}"
+    # Validate repo_url against whitelist (dynamically fetched from GitHub API)
+    allowed_repos = get_allowed_repositories()
+    if repo_url not in allowed_repos:
+        return False, f"Repository not in whitelist: {repo_url}. Allowed: {', '.join(allowed_repos) if allowed_repos else 'None'}"
 
     # Validate branch name
     branch = data["branch"]

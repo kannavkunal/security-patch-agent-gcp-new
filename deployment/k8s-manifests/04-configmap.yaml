@@ -20,3 +20,10 @@ data:
   PUBSUB_TOPIC: "security-scan-events"
   PUBSUB_SUBSCRIPTION: "scan-events-subscription"
   K8S_NAMESPACE: "security-patch-agent"
+
+  # GitHub Repository Filtering (Dynamic Discovery)
+  # Repositories are auto-discovered from GitHub using the token in Secret Manager
+  ALLOWED_REPO_OWNERS: "kannavkunal"                    # Comma-separated GitHub usernames/orgs
+  ALLOWED_REPO_PATTERN: "vulnerable-*"                   # Glob pattern to match repo names
+  EXCLUDED_REPOS: ""                                     # Comma-separated repo names to exclude
+  REPO_CACHE_TTL: "300"                                  # Cache duration in seconds (5 minutes)
