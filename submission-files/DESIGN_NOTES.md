@@ -268,7 +268,43 @@ class Phase5Verifier:
 - ✅ PR review required
 - ✅ Tests in Phase 5 (when implemented)
 
-### 4.3 Scalability - BigQuery Overkill for Demo
+### 4.3 GCP-Only Deployment - **CURRENT LIMITATION**
+
+**Assignment:** "deployable to Kubernetes using any cloud provider of your choice"
+
+**Current state:** Tightly coupled to **Google Cloud Platform only**
+
+**GCP-specific dependencies:**
+- **Vertex AI (Gemini 2.5 Pro)** - LLM for patch generation
+- **Pub/Sub** - Event-driven messaging
+- **BigQuery** - Audit logging and analytics
+- **Secret Manager** - Credential storage
+- **GCS** - Evidence storage
+- **Cloud Monitoring** - Dashboards and alerts
+- **Workload Identity** - Pod-to-GCP authentication
+
+**Why GCP-only:**
+- Assignment allowed "any cloud provider" - chose GCP for Gemini integration
+- Workload Identity simplifies auth (no API keys needed)
+- 2-day timeframe didn't allow multi-cloud abstraction
+- Native GCP integration = lower latency, simpler deployment
+
+**Porting to other clouds:**
+- **AWS:** Replace Vertex AI → Bedrock, Pub/Sub → SQS/SNS, BigQuery → Athena, Secret Manager → Secrets Manager
+- **Azure:** Replace Vertex AI → OpenAI, Pub/Sub → Service Bus, BigQuery → Synapse, Secret Manager → Key Vault
+- **Estimated effort:** 40-60 hours to abstract and support multiple clouds
+
+**Mitigation:**
+- All GCP services are abstracted in `app/clients/` (easier to swap implementations)
+- Kubernetes deployment is portable (only service integrations need changes)
+- Future: Abstract cloud services behind interfaces
+
+**Assignment compliance:**
+- ✅ Deployable to Kubernetes (GKE is Kubernetes)
+- ✅ Cloud provider chosen (GCP)
+- ⚠️ Not portable to AWS/Azure without code changes
+
+### 4.4 Scalability - BigQuery Overkill for Demo
 
 **Trade-off:** Used BigQuery for storing 10 scans (overkill)
 
@@ -281,7 +317,7 @@ class Phase5Verifier:
 **Simpler alternative:** SQLite or Postgres  
 **Why not chosen:** Wanted to show cloud-native design
 
-### 4.4 Production-Grade Implementation
+### 4.5 Production-Grade Implementation
 
 **Assignment:** "No more than two days"
 
@@ -350,12 +386,12 @@ class Phase5Verifier:
 - Revert patches if tests fail
 - Only create PR if tests pass
 
-**2. Multi-Scanner Support**
+**3. Multi-Scanner Support**
 - Add Trivy (container vulnerabilities)
 - Add Bandit (Python-specific)
 - Add npm audit (JavaScript dependencies)
 
-**3. Auto-Merge Low-Risk Patches**
+**4. Auto-Merge Low-Risk Patches**
 - If tests pass + severity = LOW → auto-merge
 - Reduce manual review burden
 - Configurable policy (CRITICAL always requires human review)
