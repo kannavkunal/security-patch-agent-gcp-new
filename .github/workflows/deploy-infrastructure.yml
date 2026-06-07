@@ -1,0 +1,144 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+      components:
+        description: 'Components to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - gke-only
+          - artifact-registry-only
+          - monitoring-only
+
+env:
+  PROJECT_ID: compact-orb-498606-f9
+  GKE_CLUSTER: code-vulnerability-scanner
+  GKE_REGION: us-central1
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.7.0
+
+    - name: Terraform Init
+      run: |
+        cd infrastructure/terraform
+        terraform init
+
+    - name: Terraform Validate
+      run: |
+        cd infrastructure/terraform
+        terraform validate
+
+    - name: Terraform Plan
+      if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+      run: |
+        cd infrastructure/terraform
+        terraform plan \
+          -var="project_id=$PROJECT_ID" \
+          -var="region=$GKE_REGION" \
+          -var="components=${{ github.event.inputs.components }}" \
+          -out=tfplan
+
+    - name: Terraform Apply
+      if: github.event.inputs.action == 'apply'
+      run: |
+        cd infrastructure/terraform
+        terraform apply -auto-approve tfplan
+
+    - name: Terraform Destroy
+      if: github.event.inputs.action == 'destroy'
+      run: |
+        cd infrastructure/terraform
+        terraform destroy -auto-approve \
+          -var="project_id=$PROJECT_ID" \
+          -var="region=$GKE_REGION" \
+          -var="components=${{ github.event.inputs.components }}"
+
+  setup-scripts:
+    name: Run Setup Scripts
+    runs-on: ubuntu-latest
+    needs: terraform
+    if: github.event.inputs.action == 'apply' && github.event.inputs.components != 'destroy'
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Get GKE Credentials
+      run: |
+        gcloud container clusters get-credentials $GKE_CLUSTER \
+          --region=$GKE_REGION \
+          --project=$PROJECT_ID
+
+    - name: Setup Workload Identity
+      if: github.event.inputs.components == 'all' || github.event.inputs.components == 'gke-only'
+      run: |
+        chmod +x infrastructure/scripts/setup-workload-identity.sh
+        ./infrastructure/scripts/setup-workload-identity.sh
+
+    - name: Setup Monitoring
+      if: github.event.inputs.components == 'all' || github.event.inputs.components == 'monitoring-only'
+      run: |
+        chmod +x infrastructure/scripts/setup-gcp-monitoring.sh
+        ./infrastructure/scripts/setup-gcp-monitoring.sh
+
+    - name: Import Dashboards
+      if: github.event.inputs.components == 'all' || github.event.inputs.components == 'monitoring-only'
+      run: |
+        chmod +x infrastructure/scripts/import-dashboards.sh
+        ./infrastructure/scripts/import-dashboards.sh
+
+    - name: Infrastructure Summary
+      run: |
+        echo "## Infrastructure Deployment Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Components Deployed: ${{ github.event.inputs.components }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- GKE Cluster: $GKE_CLUSTER" >> $GITHUB_STEP_SUMMARY
+        echo "- Region: $GKE_REGION" >> $GITHUB_STEP_SUMMARY
+        echo "- Project: $PROJECT_ID" >> $GITHUB_STEP_SUMMARY

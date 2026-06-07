@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-patch-agent
+  namespace: security-patch-agent
+  labels:
+    app: security-patch-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: security-patch-agent
+  template:
+    metadata:
+      labels:
+        app: security-patch-agent
+    spec:
+      serviceAccountName: security-patch-agent-sa
+      containers:
+      # Container 1: FastAPI server
+      - name: api
+        image: us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest
+        imagePullPolicy: Always
+        command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+        ports:
+        - containerPort: 8080
+          name: http
+        envFrom:
+        - configMapRef:
+            name: security-patch-agent-config
+        env:
+        - name: API_KEYS
+          valueFrom:
+            secretKeyRef:
+              name: security-patch-agent-api-keys
+              key: api-keys
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+      # Container 2: Pub/Sub worker
+      - name: worker
+        image: us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest
+        imagePullPolicy: Always
+        command: ["python", "-m", "app.worker"]
+        envFrom:
+        - configMapRef:
+            name: security-patch-agent-config
+        env:
+        - name: SCANNER_IMAGE
+          value: "us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi

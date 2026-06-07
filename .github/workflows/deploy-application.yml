@@ -1,0 +1,299 @@
+name: Deploy Application
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+      deployment_method:
+        description: 'Deployment method'
+        required: true
+        type: choice
+        options:
+          - kubernetes-manifests
+          - helm-chart
+      components:
+        description: 'Components to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - api-only
+          - monitoring-only
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'deployment/**'
+      - '.github/workflows/deploy-application.yml'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: code-vulnerability-scanner
+  GKE_REGION: us-central1
+  REPOSITORY: security-patch-agent
+  IMAGE: api
+  NAMESPACE: security-patch-agent
+
+jobs:
+  security-check:
+    name: Pre-deployment Security Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run security scan
+      run: |
+        pip install bandit safety
+        bandit -r app/ -ll
+        safety check --file=app/requirements.txt
+
+    - name: Scan Docker image
+      run: |
+        docker build -t scan-image ./app
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy image --severity HIGH,CRITICAL scan-image
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: security-check
+
+    permissions:
+      contents: read
+      id-token: write
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker for GCR
+      run: |
+        gcloud auth configure-docker gcr.io
+
+    - name: Build Docker Image
+      id: build
+      run: |
+        cd app
+        IMAGE_TAG="${{ github.sha }}"
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          IMAGE_TAG="${{ github.event.inputs.environment }}-${IMAGE_TAG}"
+        fi
+
+        docker build \
+          --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+          --build-arg VERSION=$IMAGE_TAG \
+          --build-arg VCS_REF=${{ github.sha }} \
+          -t gcr.io/$PROJECT_ID/$REPOSITORY:$IMAGE_TAG \
+          -t gcr.io/$PROJECT_ID/$REPOSITORY:latest \
+          .
+
+        docker push gcr.io/$PROJECT_ID/$REPOSITORY:$IMAGE_TAG
+        docker push gcr.io/$PROJECT_ID/$REPOSITORY:latest
+
+        echo "digest=$(docker inspect --format='{{index .RepoDigests 0}}' gcr.io/$PROJECT_ID/$REPOSITORY:$IMAGE_TAG | cut -d'@' -f2)" >> $GITHUB_OUTPUT
+
+    - name: Generate SBOM
+      uses: anchore/sbom-action@v0
+      with:
+        image: gcr.io/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}:${{ github.sha }}
+        format: spdx-json
+        output-file: sbom.spdx.json
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.spdx.json
+
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Install GKE Auth Plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin
+
+    - name: Get GKE Credentials
+      run: |
+        gcloud container clusters get-credentials $GKE_CLUSTER \
+          --region=$GKE_REGION \
+          --project=$PROJECT_ID
+
+    - name: Deploy with Kubernetes Manifests
+      if: github.event.inputs.deployment_method == 'kubernetes-manifests' || github.event_name == 'push'
+      run: |
+        IMAGE_TAG="${{ github.sha }}"
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          IMAGE_TAG="${{ github.event.inputs.environment }}-${IMAGE_TAG}"
+        fi
+
+        # Apply base resources first
+        kubectl apply -f deployment/k8s-manifests/01-namespace.yaml
+        kubectl apply -f deployment/k8s-manifests/02-serviceaccount.yaml
+
+        # Create/update ConfigMap from GitHub Secrets (NOT from static file)
+        kubectl create configmap security-patch-agent-config \
+          --from-literal=GCP_PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}" \
+          --from-literal=GCP_LOCATION="$GKE_REGION" \
+          --from-literal=PUBSUB_TOPIC="security-scan-events" \
+          --from-literal=PUBSUB_SUBSCRIPTION="scan-events-subscription" \
+          --from-literal=K8S_NAMESPACE="$NAMESPACE" \
+          -n $NAMESPACE \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        # Create secret from GitHub Secrets (NOT from manifest file)
+        kubectl create secret generic security-patch-agent-api-keys \
+          --from-literal=api-keys="${{ secrets.API_KEY_PRIMARY }},${{ secrets.API_KEY_SECONDARY }}" \
+          -n $NAMESPACE \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        # Apply remaining resources
+        kubectl apply -f deployment/k8s-manifests/05-deployment.yaml
+        kubectl apply -f deployment/k8s-manifests/06-service.yaml
+
+        # Update images for both containers
+        kubectl set image deployment/security-patch-agent \
+          api=gcr.io/$PROJECT_ID/$REPOSITORY:$IMAGE_TAG \
+          worker=gcr.io/$PROJECT_ID/$REPOSITORY:$IMAGE_TAG \
+          -n $NAMESPACE
+
+        # Wait for rollout
+        kubectl rollout status deployment/security-patch-agent -n $NAMESPACE --timeout=10m
+
+    - name: Deploy with Helm
+      if: github.event.inputs.deployment_method == 'helm-chart'
+      run: |
+        IMAGE_TAG="${{ github.sha }}"
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          IMAGE_TAG="${{ github.event.inputs.environment }}-${IMAGE_TAG}"
+        fi
+
+        helm upgrade --install security-patch-agent deployment/helm/security-patch-agent \
+          --namespace $NAMESPACE \
+          --create-namespace \
+          --set image.tag=$IMAGE_TAG \
+          --set project.id=$PROJECT_ID \
+          --set project.region=$GKE_REGION \
+          --set "apiKeys.keys={${{ secrets.API_KEY_PRIMARY }},${{ secrets.API_KEY_SECONDARY }}}" \
+          --set environment=${{ github.event.inputs.environment || 'production' }} \
+          --wait --timeout 10m
+
+    - name: Verify Deployment
+      run: |
+        kubectl get pods -n $NAMESPACE
+        kubectl get svc -n $NAMESPACE
+
+        # Wait for LoadBalancer IP
+        echo "Waiting for LoadBalancer IP..."
+        for i in {1..30}; do
+          EXTERNAL_IP=$(kubectl get svc security-patch-agent -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          if [ -n "$EXTERNAL_IP" ]; then
+            echo "LoadBalancer IP: $EXTERNAL_IP"
+            echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+            break
+          fi
+          sleep 10
+        done
+
+    - name: Run Health Check
+      run: |
+        if [ -n "$EXTERNAL_IP" ]; then
+          echo "Testing health endpoint..."
+          curl -f http://$EXTERNAL_IP/health || exit 1
+          echo "Health check passed!"
+        fi
+
+    - name: Run Integration Tests
+      run: |
+        chmod +x infrastructure/scripts/comprehensive-test.sh
+        export API_IP=$EXTERNAL_IP
+        export API_KEY=${{ secrets.API_KEY_PRIMARY }}
+        ./infrastructure/scripts/comprehensive-test.sh
+
+    - name: Deployment Summary
+      run: |
+        echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Details" >> $GITHUB_STEP_SUMMARY
+        echo "- Environment: ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Method: ${{ github.event.inputs.deployment_method || 'kubernetes-manifests' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Image: gcr.io/$PROJECT_ID/$REPOSITORY:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- LoadBalancer IP: ${EXTERNAL_IP:-pending}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Quick Links" >> $GITHUB_STEP_SUMMARY
+        echo "- [GKE Workloads](https://console.cloud.google.com/kubernetes/workload?project=$PROJECT_ID)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Cloud Monitoring](https://console.cloud.google.com/monitoring?project=$PROJECT_ID)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Cloud Logging](https://console.cloud.google.com/logs/query?project=$PROJECT_ID)" >> $GITHUB_STEP_SUMMARY
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: failure()
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Install GKE Auth Plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin
+
+    - name: Get GKE Credentials
+      run: |
+        gcloud container clusters get-credentials $GKE_CLUSTER \
+          --region=$GKE_REGION \
+          --project=$PROJECT_ID
+
+    - name: Rollback Deployment
+      run: |
+        kubectl rollout undo deployment/security-patch-agent -n $NAMESPACE
+        kubectl rollout status deployment/security-patch-agent -n $NAMESPACE --timeout=10m
+        echo "Rollback completed"

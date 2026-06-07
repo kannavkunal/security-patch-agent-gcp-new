@@ -1,0 +1,71 @@
+{{- if .Values.sidecars.logging.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "security-patch-agent.fullname" . }}-fluent-bit
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "security-patch-agent.labels" . | nindent 4 }}
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush        5
+        Daemon       Off
+        Log_Level    info
+        Parsers_File parsers.conf
+
+    [INPUT]
+        Name              tail
+        Path              /var/log/app/*.log
+        Parser            json
+        Tag               app.*
+        Refresh_Interval  5
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+
+    [INPUT]
+        Name              tail
+        Path              /var/log/app/access.log
+        Parser            nginx
+        Tag               access.*
+        Refresh_Interval  5
+
+    [FILTER]
+        Name                kubernetes
+        Match               *
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     app.var.log.containers.
+        Merge_Log           On
+        Keep_Log            Off
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+
+    [OUTPUT]
+        Name   stdout
+        Match  *
+        Format json_lines
+
+    # Optional: Output to Cloud Logging
+    # [OUTPUT]
+    #     Name        stackdriver
+    #     Match       *
+    #     resource    k8s_container
+    #     k8s_cluster_name code-vulnerability-scanner
+    #     k8s_cluster_location us-central1
+
+  parsers.conf: |
+    [PARSER]
+        Name   json
+        Format json
+        Time_Key time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+
+    [PARSER]
+        Name   nginx
+        Format regex
+        Regex ^(?<remote>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")?$
+        Time_Key time
+        Time_Format %d/%b/%Y:%H:%M:%S %z
+{{- end }}

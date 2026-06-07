@@ -1,0 +1,129 @@
+name: Cleanup - Destroy All Resources
+
+on:
+  workflow_dispatch:  # Manual trigger only (for safety)
+    inputs:
+      confirm_deletion:
+        description: 'Type "DESTROY" to confirm deletion of all resources'
+        required: true
+        type: string
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  CLUSTER_NAME: code-vulnerability-scanner
+
+jobs:
+  cleanup:
+    name: Delete All GCP Resources
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Verify deletion confirmation
+      run: |
+        if [ "${{ inputs.confirm_deletion }}" != "DESTROY" ]; then
+          echo "❌ Deletion not confirmed. You must type 'DESTROY' to proceed."
+          exit 1
+        fi
+        echo "✅ Deletion confirmed"
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Set project
+      run: gcloud config set project $PROJECT_ID
+
+    - name: Delete GKE cluster
+      run: |
+        echo "Deleting GKE cluster..."
+        gcloud container clusters delete $CLUSTER_NAME \
+          --region=$REGION \
+          --quiet || echo "Cluster already deleted or not found"
+
+    - name: Delete Pub/Sub resources
+      run: |
+        echo "Deleting Pub/Sub topics and subscriptions..."
+        gcloud pubsub subscriptions delete security-scan-events-sub --quiet || true
+        gcloud pubsub topics delete security-scan-events --quiet || true
+
+    - name: Delete BigQuery dataset
+      run: |
+        echo "Deleting BigQuery dataset..."
+        bq rm -r -f -d $PROJECT_ID:security_scans || echo "Dataset not found"
+
+    - name: Delete Cloud Storage buckets
+      run: |
+        echo "Deleting Cloud Storage buckets..."
+        gsutil -m rm -r gs://security-patch-evidence-$PROJECT_ID || echo "Bucket not found"
+
+    - name: Delete Secret Manager secrets
+      run: |
+        echo "Deleting Secret Manager secrets..."
+        gcloud secrets delete github-token --quiet || true
+        gcloud secrets delete github-webhook-secret --quiet || true
+        gcloud secrets delete security-patch-agent-api-keys --quiet || true
+
+    - name: Delete Artifact Registry repository
+      run: |
+        echo "Deleting Artifact Registry repository..."
+        gcloud artifacts repositories delete security-patch-agent \
+          --location=$REGION \
+          --quiet || echo "Repository not found"
+
+    - name: Delete service accounts
+      run: |
+        echo "Deleting service accounts..."
+        gcloud iam service-accounts delete security-patch-agent@$PROJECT_ID.iam.gserviceaccount.com \
+          --quiet || echo "Service account not found"
+
+    - name: Delete monitoring dashboards
+      run: |
+        echo "Deleting monitoring dashboards..."
+        DASHBOARD_IDS=$(gcloud monitoring dashboards list --format="value(name)" --filter="displayName:'Security Patch Agent*'" 2>/dev/null || echo "")
+        if [ ! -z "$DASHBOARD_IDS" ]; then
+          for DASHBOARD_ID in $DASHBOARD_IDS; do
+            gcloud monitoring dashboards delete $DASHBOARD_ID --quiet || true
+          done
+        fi
+
+    - name: Delete alert policies
+      run: |
+        echo "Deleting alert policies..."
+        ALERT_IDS=$(gcloud alpha monitoring policies list --format="value(name)" --filter="displayName:'Security Patch Agent*'" 2>/dev/null || echo "")
+        if [ ! -z "$ALERT_IDS" ]; then
+          for ALERT_ID in $ALERT_IDS; do
+            gcloud alpha monitoring policies delete $ALERT_ID --quiet || true
+          done
+        fi
+
+    - name: Delete log-based metrics
+      run: |
+        echo "Deleting log-based metrics..."
+        gcloud logging metrics delete security_patch_agent_scans_completed --quiet || true
+        gcloud logging metrics delete security_patch_agent_scans_failed --quiet || true
+        gcloud logging metrics delete security_patch_agent_prs_created --quiet || true
+        gcloud logging metrics delete security_patch_agent_evidence_generated --quiet || true
+        gcloud logging metrics delete security_patch_agent_api_requests --quiet || true
+
+    - name: Cleanup summary
+      run: |
+        echo "========================================="
+        echo "Cleanup complete!"
+        echo "========================================="
+        echo ""
+        echo "All resources have been deleted."
+        echo "Verify with:"
+        echo "  - gcloud container clusters list"
+        echo "  - gcloud pubsub topics list"
+        echo "  - bq ls -d"
+        echo "  - gsutil ls"
+        echo ""
+        echo "Expected cost after cleanup: \$0/month"

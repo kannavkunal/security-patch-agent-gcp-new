@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Patch Agent - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #10b981;
+            margin-top: 10px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #333;
+        }
+
+        table tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-patch {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-review {
+            background: #e9d5ff;
+            color: #6b21a8;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔒 Security Patch Agent
+                <span class="status-badge" id="statusBadge">● API Connected</span>
+            </h1>
+            <p>AI-Powered Automated Vulnerability Remediation System | Powered by Google Gemini 2.5 Pro</p>
+        </div>
+
+        <!-- Alerts -->
+        <div class="alert alert-success" id="successAlert"></div>
+        <div class="alert alert-error" id="errorAlert"></div>
+        <div class="alert alert-info" id="infoAlert"></div>
+
+        <!-- Main Grid -->
+        <div class="grid">
+            <!-- Authentication Card -->
+            <div class="card">
+                <h2>🔑 Authentication</h2>
+                <div class="form-group">
+                    <label for="apiKey">API Key (Required)</label>
+                    <input type="password" id="apiKey" placeholder="Enter your API key" autocomplete="off">
+                </div>
+                <button class="btn btn-secondary" onclick="testConnection()">Test Connection</button>
+            </div>
+
+            <!-- Trigger Scan Card -->
+            <div class="card">
+                <h2>🚀 Trigger Security Scan</h2>
+                <div class="form-group">
+                    <label for="repository">Repository</label>
+                    <select id="repository">
+                        <option value="">Select a repository...</option>
+                        <option value="https://github.com/kannavkunal/vulnerable-python-api">vulnerable-python-api</option>
+                        <option value="https://github.com/kannavkunal/vulnerable-java-app">vulnerable-java-app</option>
+                        <option value="https://github.com/kannavkunal/vulnerable-node-service">vulnerable-node-service</option>
+                        <option value="https://github.com/kannavkunal/vulnerable-go-microservice">vulnerable-go-microservice</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="scanMode">Scan Mode</label>
+                    <select id="scanMode">
+                        <option value="patch">PATCH - Full Repository Scan & Auto-Fix</option>
+                        <option value="review">REVIEW - PR Diff Analysis Only</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="branch">Branch</label>
+                    <input type="text" id="branch" value="main" placeholder="main">
+                </div>
+                <button class="btn" onclick="triggerScan()" id="scanBtn">
+                    <span id="scanBtnText">Start Scan</span>
+                    <span id="scanBtnLoading" style="display: none;"><span class="loading"></span> Scanning...</span>
+                </button>
+            </div>
+
+            <!-- View Scans Card -->
+            <div class="card full-width">
+                <h2>📊 Scan History</h2>
+
+                <!-- Filters -->
+                <div class="filters">
+                    <div class="form-group">
+                        <label for="filterRepo">Filter by Repository</label>
+                        <select id="filterRepo" onchange="loadScans()">
+                            <option value="">All Repositories</option>
+                            <option value="kannavkunal/vulnerable-python-api">vulnerable-python-api</option>
+                            <option value="kannavkunal/vulnerable-java-app">vulnerable-java-app</option>
+                            <option value="kannavkunal/vulnerable-node-service">vulnerable-node-service</option>
+                            <option value="kannavkunal/vulnerable-go-microservice">vulnerable-go-microservice</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filterMode">Filter by Mode</label>
+                        <select id="filterMode" onchange="loadScans()">
+                            <option value="">All Modes</option>
+                            <option value="patch">PATCH</option>
+                            <option value="review">REVIEW</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="limit">Results Limit</label>
+                        <select id="limit" onchange="loadScans()">
+                            <option value="10">10 results</option>
+                            <option value="20" selected>20 results</option>
+                            <option value="50">50 results</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button class="btn" onclick="loadScans()" style="height: 46px;">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div id="scansTableContainer">
+                    <div class="empty-state">
+                        <p>Click "Refresh" to load scan history</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use same origin as the page (works for both local and production)
+        const API_BASE_URL = window.location.origin;
+
+        function getApiKey() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                showAlert('error', 'Please enter your API key');
+                return null;
+            }
+            return apiKey;
+        }
+
+        function showAlert(type, message) {
+            const alertId = type === 'success' ? 'successAlert' : type === 'error' ? 'errorAlert' : 'infoAlert';
+            const alert = document.getElementById(alertId);
+            alert.textContent = message;
+            alert.style.display = 'block';
+
+            // Hide other alerts
+            ['successAlert', 'errorAlert', 'infoAlert'].forEach(id => {
+                if (id !== alertId) {
+                    document.getElementById(id).style.display = 'none';
+                }
+            });
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        async function testConnection() {
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/test`, {
+                    headers: {
+                        'X-API-Key': apiKey
+                    }
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('success', `✓ API Key Valid | Status: ${data.status} | Model: ${data.model}`);
+                    document.getElementById('statusBadge').textContent = '● Authenticated';
+                    document.getElementById('statusBadge').style.background = '#10b981';
+                } else if (response.status === 401) {
+                    showAlert('error', '✗ Invalid API Key');
+                    document.getElementById('statusBadge').textContent = '● Authentication Failed';
+                    document.getElementById('statusBadge').style.background = '#ef4444';
+                } else {
+                    showAlert('error', `Failed: ${data.detail || 'Unknown error'}`);
+                    document.getElementById('statusBadge').textContent = '● API Error';
+                    document.getElementById('statusBadge').style.background = '#ef4444';
+                }
+            } catch (error) {
+                showAlert('error', `Connection failed: ${error.message}`);
+                document.getElementById('statusBadge').textContent = '● API Offline';
+                document.getElementById('statusBadge').style.background = '#ef4444';
+            }
+        }
+
+        async function triggerScan() {
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            const repository = document.getElementById('repository').value;
+            const mode = document.getElementById('scanMode').value;
+            const branch = document.getElementById('branch').value.trim();
+
+            if (!repository) {
+                showAlert('error', 'Please select a repository');
+                return;
+            }
+
+            if (!branch) {
+                showAlert('error', 'Please enter a branch name');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('scanBtn').disabled = true;
+            document.getElementById('scanBtnText').style.display = 'none';
+            document.getElementById('scanBtnLoading').style.display = 'inline';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/scan`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': apiKey
+                    },
+                    body: JSON.stringify({
+                        repo_url: repository,
+                        mode: mode,
+                        branch: branch
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('success', `✓ Scan queued successfully! Scan ID: ${data.scan_id}`);
+                    // Auto-refresh scans after 2 seconds
+                    setTimeout(() => loadScans(), 2000);
+                } else {
+                    const errorMsg = data.detail ?
+                        (Array.isArray(data.detail) ? data.detail.map(e => e.msg).join(', ') : data.detail) :
+                        'Scan failed';
+                    showAlert('error', `✗ ${errorMsg}`);
+                }
+            } catch (error) {
+                showAlert('error', `✗ Request failed: ${error.message}`);
+            } finally {
+                // Reset button state
+                document.getElementById('scanBtn').disabled = false;
+                document.getElementById('scanBtnText').style.display = 'inline';
+                document.getElementById('scanBtnLoading').style.display = 'none';
+            }
+        }
+
+        async function loadScans() {
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            const filterRepo = document.getElementById('filterRepo').value;
+            const filterMode = document.getElementById('filterMode').value;
+            const limit = document.getElementById('limit').value;
+
+            let url = `${API_BASE_URL}/scans?limit=${limit}`;
+            if (filterRepo) url += `&repo_name=${filterRepo}`;
+            if (filterMode) url += `&scan_mode=${filterMode}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'X-API-Key': apiKey
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayScans(data.scans);
+                    showAlert('info', `Loaded ${data.total} scan(s)`);
+                } else {
+                    showAlert('error', `Failed to load scans: ${data.detail}`);
+                }
+            } catch (error) {
+                showAlert('error', `Failed to load scans: ${error.message}`);
+            }
+        }
+
+        function displayScans(scans) {
+            const container = document.getElementById('scansTableContainer');
+
+            if (!scans || scans.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No scans found</p></div>';
+                return;
+            }
+
+            const table = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Scan ID</th>
+                            <th>Repository</th>
+                            <th>Mode</th>
+                            <th>Status</th>
+                            <th>Vulnerabilities</th>
+                            <th>Fixes Applied</th>
+                            <th>PR</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${scans.map(scan => `
+                            <tr>
+                                <td><code>${scan.scan_id}</code></td>
+                                <td>${scan.repo_name}</td>
+                                <td><span class="badge badge-${scan.scan_mode}">${scan.scan_mode.toUpperCase()}</span></td>
+                                <td><span class="badge badge-${scan.status === 'completed' ? 'success' : scan.status === 'failed' ? 'error' : 'warning'}">${scan.status}</span></td>
+                                <td>${scan.vulnerabilities_found || 0}</td>
+                                <td>${scan.fixes_applied || 0}</td>
+                                <td>${scan.pr_url ? `<a href="${scan.pr_url}" target="_blank" class="link">#${scan.pr_number}</a>` : '-'}</td>
+                                <td>${new Date(scan.timestamp).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = table;
+        }
+
+        // Test connection on page load
+        window.addEventListener('load', () => {
+            // Don't auto-test, let user enter API key first
+            console.log('Security Patch Agent Dashboard Loaded');
+        });
+    </script>
+</body>
+</html>

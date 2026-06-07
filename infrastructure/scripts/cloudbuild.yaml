@@ -1,0 +1,69 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:$BUILD_ID'
+      - '.'
+
+  # Push the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest'
+
+  # Get GKE credentials
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'container'
+      - 'clusters'
+      - 'get-credentials'
+      - 'code-vulnerability-scanner'
+      - '--region=us-central1'
+      - '--project=compact-orb-498606-f9'
+
+  # Apply all Kubernetes manifests (kubectl apply handles create/update)
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'apply'
+      - '-f'
+      - 'k8s-manifests/'
+    env:
+      - 'CLOUDSDK_COMPUTE_REGION=us-central1'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=code-vulnerability-scanner'
+
+  # Restart deployment to use new image
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'rollout'
+      - 'restart'
+      - 'deployment/security-patch-agent'
+      - '-n'
+      - 'security-patch-agent'
+    env:
+      - 'CLOUDSDK_COMPUTE_REGION=us-central1'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=code-vulnerability-scanner'
+
+  # Wait for rollout to complete
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'rollout'
+      - 'status'
+      - 'deployment/security-patch-agent'
+      - '-n'
+      - 'security-patch-agent'
+      - '--timeout=5m'
+    env:
+      - 'CLOUDSDK_COMPUTE_REGION=us-central1'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=code-vulnerability-scanner'
+
+images:
+  - 'us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest'
+  - 'us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:$BUILD_ID'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'

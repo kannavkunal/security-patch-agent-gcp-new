@@ -1,0 +1,22 @@
+# NOTE: This file is a REFERENCE TEMPLATE ONLY
+# The actual ConfigMap is created dynamically by GitHub Actions workflows
+# using kubectl create configmap with values from GitHub Secrets.
+#
+# This ensures project portability - deploy to any GCP project by only
+# changing GCP_PROJECT_ID secret, with no code changes required.
+#
+# See: .github/workflows/full-deployment.yml
+# See: .github/workflows/deploy-application.yml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-patch-agent-config
+  namespace: security-patch-agent
+data:
+  # These values are overridden by GitHub Actions workflows
+  GCP_PROJECT_ID: "your-project-id"  # Set via ${{ secrets.GCP_PROJECT_ID }}
+  GCP_LOCATION: "us-central1"
+  PUBSUB_TOPIC: "security-scan-events"
+  PUBSUB_SUBSCRIPTION: "scan-events-subscription"
+  K8S_NAMESPACE: "security-patch-agent"

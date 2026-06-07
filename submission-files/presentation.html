@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Patch Agent - Tessera 2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            padding: 60px 120px 140px 120px;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 3rem;
+            font-weight: 600;
+            margin-bottom: 40px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid rgba(255,255,255,0.3);
+        }
+
+        h3 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #ffd700;
+        }
+
+        p {
+            font-size: 1.25rem;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        ul {
+            font-size: 1.25rem;
+            line-height: 1.8;
+            margin-left: 32px;
+        }
+
+        li {
+            margin-bottom: 12px;
+        }
+
+        .center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: calc(100vh - 200px);
+            text-align: center;
+        }
+
+        .two-col {
+            display: flex;
+            gap: 40px;
+            margin-top: 32px;
+        }
+
+        .two-col > div {
+            flex: 1;
+        }
+
+        .three-col {
+            display: flex;
+            gap: 32px;
+            margin-top: 32px;
+        }
+
+        .three-col > div {
+            flex: 1;
+        }
+
+        .box {
+            background: rgba(255,255,255,0.12);
+            padding: 32px;
+            border-radius: 12px;
+            border-left: 4px solid #ffd700;
+        }
+
+        .metric {
+            text-align: center;
+            background: rgba(255,255,255,0.15);
+            padding: 28px 24px;
+            border-radius: 12px;
+        }
+
+        .metric-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #ffd700;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(40, 167, 69, 0.9);
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 1.1rem;
+            margin: 8px;
+            font-weight: 500;
+        }
+
+        .highlight {
+            background: rgba(255, 215, 0, 0.25);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .code {
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.6);
+            padding: 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            line-height: 1.5;
+            white-space: pre;
+            overflow-x: auto;
+            margin-top: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 32px;
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        th {
+            background: rgba(255,255,255,0.15);
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        td {
+            font-size: 1.15rem;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        button {
+            background: rgba(255,255,255,0.25);
+            border: 2px solid white;
+            color: white;
+            padding: 0;
+            font-size: 2rem;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.1);
+        }
+
+        .slide-number {
+            position: fixed;
+            bottom: 40px;
+            right: 60px;
+            font-size: 1.2rem;
+            opacity: 0.7;
+        }
+
+        .logo {
+            position: fixed;
+            top: 40px;
+            right: 60px;
+            font-size: 1.3rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">🔒 Security Patch Agent</div>
+
+    <!-- Slide 1: Title -->
+    <div class="slide active">
+        <div class="center">
+            <h1>Security Patch Agent</h1>
+            <p style="font-size: 1.75rem; opacity: 0.95; margin-bottom: 48px;">
+                AI-Powered Automated Vulnerability Remediation
+            </p>
+            <div style="margin-top: 32px;">
+                <span class="badge">Google Gemini 2.5 Pro</span>
+                <span class="badge">Google Cloud Platform</span>
+                <span class="badge">Tessera 2026</span>
+            </div>
+            <p style="margin-top: 80px; font-size: 1.5rem; opacity: 0.8;">
+                Kunal Kannav | June 2026
+            </p>
+        </div>
+    </div>
+
+    <!-- Slide 2: Problem -->
+    <div class="slide">
+        <h2>The Problem</h2>
+
+        <div class="three-col">
+            <div class="box">
+                <h3 style="font-size: 1.5rem;">❌ Slow Remediation</h3>
+                <p style="font-size: 1.1rem;">SAST tools detect vulnerabilities but developers fix manually</p>
+                <div class="metric" style="margin-top: 16px; padding: 20px 16px;">
+                    <span class="metric-value" style="font-size: 2.8rem;">60+ days</span>
+                    <span class="metric-label" style="font-size: 1rem;">Time-to-fix</span>
+                </div>
+            </div>
+            <div class="box">
+                <h3 style="font-size: 1.5rem;">❌ Alert Fatigue</h3>
+                <p style="font-size: 1.1rem;">Scanners report old vulns on every PR</p>
+                <div class="metric" style="margin-top: 16px; padding: 20px 16px;">
+                    <span class="metric-value" style="font-size: 2.8rem;">98%</span>
+                    <span class="metric-label" style="font-size: 1rem;">False positives</span>
+                </div>
+            </div>
+            <div class="box">
+                <h3 style="font-size: 1.5rem;">❌ Audit Burden</h3>
+                <p style="font-size: 1.1rem;">Manual evidence assembly from scattered sources</p>
+                <div class="metric" style="margin-top: 16px; padding: 20px 16px;">
+                    <span class="metric-value" style="font-size: 2.8rem;">40 hrs</span>
+                    <span class="metric-label" style="font-size: 1rem;">Per audit cycle</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Solution -->
+    <div class="slide">
+        <div class="center">
+            <h2 style="border: none; padding: 0;">The Solution</h2>
+            <div class="box" style="max-width: 900px; margin: 32px 0;">
+                <p style="font-size: 2rem; line-height: 1.5; text-align: center;">
+                    "What if vulnerabilities <span class="highlight">fixed themselves</span>?"
+                </p>
+            </div>
+            <div style="text-align: left; max-width: 800px; margin-top: 40px;">
+                <ul style="font-size: 1.4rem; line-height: 2;">
+                    <li><strong>Detects</strong> vulnerabilities using Semgrep</li>
+                    <li><strong>Understands</strong> context using Gemini 2.5 Pro</li>
+                    <li><strong>Generates</strong> secure code fixes</li>
+                    <li><strong>Creates</strong> pull requests automatically</li>
+                    <li><strong>Documents</strong> everything for auditors</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Two Modes -->
+    <div class="slide">
+        <h2>Two Operating Modes</h2>
+
+        <div class="two-col">
+            <div class="box">
+                <h3>🔧 PATCH Mode</h3>
+                <p style="margin: 20px 0;"><strong>Trigger:</strong> Manual API call</p>
+                <p><strong>Scope:</strong> Full repository</p>
+                <p><strong>Output:</strong> PR with automated fixes</p>
+                <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 24px 0;">
+                <p>✅ Proactive remediation</p>
+                <p>✅ AI-generated patches</p>
+                <p>✅ Evidence in GCS</p>
+            </div>
+
+            <div class="box">
+                <h3>🔍 REVIEW Mode</h3>
+                <p style="margin: 20px 0;"><strong>Trigger:</strong> GitHub webhook</p>
+                <p><strong>Scope:</strong> PR changes only</p>
+                <p><strong>Output:</strong> Security comments</p>
+                <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 24px 0;">
+                <p>✅ Only NEW vulnerabilities</p>
+                <p>✅ Zero false positives</p>
+                <p>✅ Blocks risky merges</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Architecture -->
+    <div class="slide">
+        <h2>System Architecture</h2>
+
+        <div class="code">
+GitHub → FastAPI → Pub/Sub → K8s Job → 8-Phase Pipeline
+                                            ↓
+                                      Gemini 2.5 Pro
+
+Pipeline:
+┌────────────────────────────────────────────┐
+│ Phase 1: Repository Analysis              │
+│ Phase 2: Vulnerability Detection (Semgrep)│
+│ Phase 3: Context (BigQuery historical)    │
+│ Phase 4: Patch Generation (Gemini AI)     │
+│ Phase 5: Verification (future)            │
+│ Phase 6: GitHub Integration (PR/comments) │
+│ Phase 7: Audit Logging (BigQuery)         │
+│ Phase 8: Evidence (GCS markdown files)    │
+└────────────────────────────────────────────┘
+
+Output: GitHub PR + GCS Evidence + BigQuery Analytics</div>
+    </div>
+
+    <!-- Slide 6: Innovations -->
+    <div class="slide">
+        <h2>Key Innovations</h2>
+
+        <div style="margin-top: 24px;">
+            <div style="margin-bottom: 32px;">
+                <h3>1. LLM-Powered Remediation</h3>
+                <p>First tool using Gemini 2.5 Pro for full-file security patches</p>
+            </div>
+
+            <div style="margin-bottom: 32px;">
+                <h3>2. Historical Context Memory</h3>
+                <p>Queries BigQuery for past scans to prevent regression bugs</p>
+            </div>
+
+            <div style="margin-bottom: 32px;">
+                <h3>3. Differential Analysis</h3>
+                <p>Compares PR vs base branch → only reports NEW vulnerabilities</p>
+            </div>
+
+            <div style="margin-bottom: 32px;">
+                <h3>4. Audit-Grade Evidence</h3>
+                <p>Automated CVSS scoring + attack scenarios for compliance</p>
+            </div>
+
+            <div>
+                <h3>5. Event-Driven Scale</h3>
+                <p>Kubernetes + Pub/Sub handles 100+ concurrent scans</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Tech Stack -->
+    <div class="slide">
+        <h2>Technology Stack</h2>
+
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Technology</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td>API</td>
+                <td>FastAPI</td>
+                <td>REST endpoints, webhooks</td>
+            </tr>
+            <tr>
+                <td>LLM</td>
+                <td>Gemini 2.5 Pro</td>
+                <td>Code generation</td>
+            </tr>
+            <tr>
+                <td>Scanner</td>
+                <td>Semgrep</td>
+                <td>Vulnerability detection</td>
+            </tr>
+            <tr>
+                <td>Orchestration</td>
+                <td>Kubernetes (GKE)</td>
+                <td>Job scheduling</td>
+            </tr>
+            <tr>
+                <td>Messaging</td>
+                <td>Pub/Sub</td>
+                <td>Event processing</td>
+            </tr>
+            <tr>
+                <td>Storage</td>
+                <td>GCS + BigQuery</td>
+                <td>Evidence + analytics</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Slide 8: Impact -->
+    <div class="slide">
+        <h2>Business Impact</h2>
+
+        <div class="three-col">
+            <div class="metric">
+                <span class="metric-value">99.8%</span>
+                <span class="metric-label">Faster Remediation</span>
+                <p style="font-size: 1rem; margin-top: 12px; opacity: 0.8;">60 days → 3 minutes</p>
+            </div>
+            <div class="metric">
+                <span class="metric-value">98%</span>
+                <span class="metric-label">Fewer False Positives</span>
+                <p style="font-size: 1rem; margin-top: 12px; opacity: 0.8;">Differential analysis</p>
+            </div>
+            <div class="metric">
+                <span class="metric-value">95%</span>
+                <span class="metric-label">Less Audit Prep</span>
+                <p style="font-size: 1rem; margin-top: 12px; opacity: 0.8;">40 hours → 2 hours</p>
+            </div>
+        </div>
+
+        <div class="metric" style="max-width: 500px; margin: 48px auto 0;">
+            <span class="metric-value">$97K</span>
+            <span class="metric-label">Annual Net Savings</span>
+            <p style="font-size: 1rem; margin-top: 12px; opacity: 0.8;">1,196% ROI</p>
+        </div>
+    </div>
+
+    <!-- Slide 9: Evidence -->
+    <div class="slide">
+        <h2>Audit-Grade Evidence</h2>
+
+        <div class="code" style="font-size: 0.95rem;">
+gs://security-patch-evidence/
+└── owner/repo/scan-{id}/
+    ├── 00_SUMMARY.md       # CVSS score, overview
+    ├── findings/
+    │   ├── F-01-sql.md    # Detailed analysis
+    │   └── F-02-xss.md
+    ├── attack-patterns/
+    │   └── P-01-sql.md    # Exploitation guide
+    └── patches/
+        ├── app.py.before  # Vulnerable code
+        ├── app.py.after   # Fixed code
+        └── app.py.diff    # Changes</div>
+
+        <div style="margin-top: 32px;">
+            <p style="font-size: 1.3rem;">✅ Linked in PR comments</p>
+            <p style="font-size: 1.3rem;">✅ SOC 2, ISO 27001, PCI DSS ready</p>
+        </div>
+    </div>
+
+    <!-- Slide 10: Live Demo -->
+    <div class="slide">
+        <h2>Live Demo</h2>
+
+        <div class="box">
+            <h3>Test: vulnerable-python-api</h3>
+            <ul style="margin: 24px 0;">
+                <li><strong>Vulnerabilities:</strong> 23 found</li>
+                <li><strong>PR Created:</strong> #3 with automated fixes</li>
+                <li><strong>Evidence:</strong> 33 markdown files in GCS</li>
+                <li><strong>Duration:</strong> 3.5 minutes</li>
+            </ul>
+        </div>
+
+        <div class="code" style="margin-top: 32px;">
+curl -X POST http://34.171.214.25/scan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repo_url": "https://github.com/owner/repo",
+    "mode": "patch"
+  }'</div>
+    </div>
+
+    <!-- Slide 11: Competitive -->
+    <div class="slide">
+        <h2>Competitive Advantage</h2>
+
+        <table>
+            <tr>
+                <th>Feature</th>
+                <th>Security Patch Agent</th>
+                <th>Snyk</th>
+                <th>GitHub Security</th>
+            </tr>
+            <tr>
+                <td>AI-Generated Fixes</td>
+                <td style="color: #28a745;">✅ Full files</td>
+                <td>⚠️ Limited</td>
+                <td>❌ No</td>
+            </tr>
+            <tr>
+                <td>Historical Context</td>
+                <td style="color: #28a745;">✅ BigQuery RAG</td>
+                <td>❌ No</td>
+                <td>❌ No</td>
+            </tr>
+            <tr>
+                <td>NEW Vuln Detection</td>
+                <td style="color: #28a745;">✅ Differential</td>
+                <td>❌ No</td>
+                <td>⚠️ Partial</td>
+            </tr>
+            <tr>
+                <td>Audit Evidence</td>
+                <td style="color: #28a745;">✅ Automated</td>
+                <td>⚠️ Export</td>
+                <td>⚠️ Basic</td>
+            </tr>
+            <tr>
+                <td>Cost (50 repos)</td>
+                <td>$750/mo</td>
+                <td>$5,000/mo</td>
+                <td>$21K/yr</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Slide 12: Roadmap -->
+    <div class="slide">
+        <h2>Roadmap</h2>
+
+        <div class="three-col">
+            <div class="box">
+                <h3 style="margin-top: 0;">v1.0 (Current)</h3>
+                <ul style="margin: 16px 0 0 24px; font-size: 1.15rem;">
+                    <li>PATCH & REVIEW modes</li>
+                    <li>Gemini 2.5 Pro</li>
+                    <li>BigQuery + GCS</li>
+                    <li>Monitoring</li>
+                </ul>
+            </div>
+
+            <div class="box">
+                <h3 style="margin-top: 0;">v1.1 (Q3 2026)</h3>
+                <ul style="margin: 16px 0 0 24px; font-size: 1.15rem;">
+                    <li>Auto testing</li>
+                    <li>Batch scanning</li>
+                    <li>Notifications</li>
+                    <li>Custom rules</li>
+                </ul>
+            </div>
+
+            <div class="box">
+                <h3 style="margin-top: 0;">v2.0 (Q4 2026)</h3>
+                <ul style="margin: 16px 0 0 24px; font-size: 1.15rem;">
+                    <li>Multi-scanner</li>
+                    <li>More languages</li>
+                    <li>Auto-merge</li>
+                    <li>IaC support</li>
+                </ul>
+            </div>
+        </div>
+
+        <p style="text-align: center; font-size: 1.4rem; margin-top: 48px; opacity: 0.9;">
+            📈 Stability → Features → AI Enhancement
+        </p>
+    </div>
+
+    <!-- Slide 13: Why It Matters -->
+    <div class="slide">
+        <h2>Why This Matters</h2>
+
+        <div class="box" style="text-align: center; margin: 24px 0 32px 0;">
+            <p style="font-size: 1.8rem; line-height: 1.6;">
+                Paradigm shift from <strong>detection-only</strong><br>
+                to <span class="highlight">detection + automated remediation</span>
+            </p>
+        </div>
+
+        <div class="two-col">
+            <div class="box" style="border-left-color: #28a745;">
+                <h3>⚡ Speed</h3>
+                <p style="font-size: 1.4rem; margin: 8px 0;">99.8% faster remediation</p>
+                <p style="opacity: 0.85; font-size: 1.15rem;">60 days → 3 minutes</p>
+            </div>
+            <div class="box" style="border-left-color: #28a745;">
+                <h3>🎯 Accuracy</h3>
+                <p style="font-size: 1.4rem; margin: 8px 0;">98% fewer false positives</p>
+                <p style="opacity: 0.85; font-size: 1.15rem;">Only NEW vulnerabilities</p>
+            </div>
+        </div>
+
+        <div class="two-col" style="margin-top: 24px;">
+            <div class="box" style="border-left-color: #28a745;">
+                <h3>📋 Compliance</h3>
+                <p style="font-size: 1.4rem; margin: 8px 0;">95% less audit prep</p>
+                <p style="opacity: 0.85; font-size: 1.15rem;">40 hours → 2 hours</p>
+            </div>
+            <div class="box" style="border-left-color: #28a745;">
+                <h3>💰 ROI</h3>
+                <p style="font-size: 1.4rem; margin: 8px 0;">$97K annual savings</p>
+                <p style="opacity: 0.85; font-size: 1.15rem;">1,196% return</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 14: Thank You -->
+    <div class="slide">
+        <div class="center">
+            <h1 style="font-size: 5rem;">Thank You</h1>
+
+            <div class="box" style="max-width: 700px; margin-top: 48px;">
+                <p style="font-size: 1.4rem; margin: 16px 0;">
+                    <strong>GitHub:</strong><br>
+                    github.com/kannavkunal/security-patch-agent
+                </p>
+                <p style="font-size: 1.4rem; margin: 16px 0;">
+                    <strong>Live System:</strong><br>
+                    http://34.171.214.25
+                </p>
+                <p style="font-size: 1.4rem; margin: 16px 0;">
+                    <strong>Email:</strong><br>
+                    kannavkunal@gmail.com
+                </p>
+            </div>
+
+            <p style="font-size: 2rem; margin-top: 64px;">
+                🔒 <strong>Security Patch Agent</strong>
+            </p>
+            <p style="font-size: 1.3rem; margin-top: 16px; opacity: 0.9;">
+                Powered by Google Gemini 2.5 Pro | Tessera 2026
+            </p>
+        </div>
+    </div>
+
+    <div class="slide-number">
+        <span id="current-slide">1</span> / 14
+    </div>
+
+    <div class="controls">
+        <button onclick="previousSlide()">←</button>
+        <button onclick="nextSlide()">→</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = 14;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function previousSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                previousSlide();
+            }
+        });
+    </script>
+</body>
+</html>

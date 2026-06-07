@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "security-patch-agent.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "security-patch-agent.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "security-patch-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "security-patch-agent.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "security-patch-agent.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      # Main application container
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: GCP_PROJECT_ID
+          value: {{ .Values.gcp.projectId | quote }}
+        - name: GCP_LOCATION
+          value: {{ .Values.gcp.location | quote }}
+        {{- if .Values.apiKeys.enabled }}
+        - name: API_KEYS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "security-patch-agent.fullname" . }}-api-keys
+              key: api-keys
+        {{- end }}
+        volumeMounts:
+        - name: logs
+          mountPath: /var/log/app
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 12 }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 12 }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      {{- if .Values.sidecars.logging.enabled }}
+      # Fluent Bit logging sidecar
+      - name: fluent-bit
+        image: {{ .Values.sidecars.logging.image }}
+        volumeMounts:
+        - name: logs
+          mountPath: /var/log/app
+          readOnly: true
+        - name: fluent-bit-config
+          mountPath: /fluent-bit/etc/
+        resources:
+          {{- toYaml .Values.sidecars.logging.resources | nindent 12 }}
+      {{- end }}
+      volumes:
+      - name: logs
+        emptyDir: {}
+      {{- if .Values.sidecars.logging.enabled }}
+      - name: fluent-bit-config
+        configMap:
+          name: {{ include "security-patch-agent.fullname" . }}-fluent-bit
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

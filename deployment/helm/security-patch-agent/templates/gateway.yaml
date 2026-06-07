@@ -1,0 +1,38 @@
+{{- if .Values.istio.enabled }}
+{{- if .Values.istio.gateway.create }}
+---
+# Istio Gateway in istio-system namespace
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ .Values.istio.gateway.name }}
+  namespace: istio-system  # Gateway in separate namespace
+  labels:
+    {{- include "security-patch-agent.labels" . | nindent 4 }}
+spec:
+  selector:
+    istio: ingressgateway  # Use default Istio ingress gateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    {{- range .Values.istio.gateway.hosts }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- if .Values.istio.gateway.tls.enabled }}
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: {{ .Values.istio.gateway.tls.credentialName }}
+    hosts:
+    {{- range .Values.istio.gateway.hosts }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

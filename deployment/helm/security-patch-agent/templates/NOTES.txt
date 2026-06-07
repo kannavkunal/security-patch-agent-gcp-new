@@ -1,0 +1,39 @@
+1. Get the application URL by running these commands:
+{{- if eq .Values.service.type "LoadBalancer" }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        You can watch the status by running:
+
+        kubectl get svc -n {{ .Release.Namespace }} {{ include "security-patch-agent.fullname" . }} -w
+
+  Once ready, get the external IP:
+
+        export SERVICE_IP=$(kubectl get svc -n {{ .Release.Namespace }} {{ include "security-patch-agent.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "API available at: http://$SERVICE_IP"
+
+2. Test the API:
+
+   curl http://$SERVICE_IP/health
+
+3. Analyze code for vulnerabilities:
+
+   curl -X POST http://$SERVICE_IP/analyze \
+     -H "Content-Type: application/json" \
+     -d '{
+       "code": "your code here",
+       "language": "python",
+       "context": "optional context"
+     }'
+
+4. Check the deployment status:
+
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "security-patch-agent.name" . }}
+
+5. View logs:
+
+   kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "security-patch-agent.name" . }} -f
+
+---
+Workload Identity is {{ if .Values.workloadIdentity.enabled }}ENABLED{{ else }}DISABLED{{ end }}
+{{- if .Values.workloadIdentity.enabled }}
+GCP Service Account: {{ .Values.workloadIdentity.gcpServiceAccount }}
+{{- end }}

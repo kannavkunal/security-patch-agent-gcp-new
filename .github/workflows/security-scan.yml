@@ -1,0 +1,107 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan
+
+permissions:
+  contents: read
+  security-events: write  # Required for SARIF upload
+
+jobs:
+  code-scan:
+    name: Code Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install bandit safety pylint
+        pip install -r app/requirements.txt
+
+    - name: Run Bandit (Python security)
+      run: |
+        bandit -r app/ -f json -o bandit-report.json || true
+        bandit -r app/ -ll || echo "Bandit found issues, but continuing..."
+      continue-on-error: true
+
+    - name: Check dependencies for vulnerabilities
+      run: |
+        safety check --file=app/requirements.txt --json || true
+      continue-on-error: true
+
+    - name: Run Pylint
+      run: |
+        pylint app/main.py --output-format=text --disable=C0114,C0115,C0116 || true
+      continue-on-error: true
+
+    - name: Upload Bandit results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: bandit-report
+        path: bandit-report.json
+
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: |
+        docker build -t security-patch-agent:${{ github.sha }} ./app
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'security-patch-agent:${{ github.sha }}'
+        format: 'table'
+        exit-code: '0'
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
+
+    - name: Run Trivy for full report
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'security-patch-agent:${{ github.sha }}'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v4
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+      continue-on-error: true
+
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: TruffleHog Secret Scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        extra_args: --only-verified --no-update
+      continue-on-error: true
