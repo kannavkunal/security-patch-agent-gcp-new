@@ -74,6 +74,8 @@ resource "google_pubsub_subscription" "dead_letter_sub" {
 
 # IAM: Allow service account to publish to topic
 resource "google_pubsub_topic_iam_member" "publisher" {
+  count = var.components == "all" || var.components == "gke-only" ? 1 : 0
+
   topic  = google_pubsub_topic.security_scan_events.name
   role   = "roles/pubsub.publisher"
   member = "serviceAccount:${google_service_account.app_sa[0].email}"
@@ -81,6 +83,8 @@ resource "google_pubsub_topic_iam_member" "publisher" {
 
 # IAM: Allow service account to subscribe
 resource "google_pubsub_subscription_iam_member" "subscriber" {
+  count = var.components == "all" || var.components == "gke-only" ? 1 : 0
+
   subscription = google_pubsub_subscription.scan_events_sub.name
   role         = "roles/pubsub.subscriber"
   member       = "serviceAccount:${google_service_account.app_sa[0].email}"

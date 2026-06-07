@@ -9,10 +9,13 @@ resource "google_bigquery_dataset" "security_scans" {
     app         = "security-patch-agent"
   }
 
-  # Grant dataset owner permissions to service account
-  access {
-    role          = "OWNER"
-    user_by_email = google_service_account.app_sa[0].email
+  # Grant dataset owner permissions to service account (if created)
+  dynamic "access" {
+    for_each = var.components == "all" || var.components == "gke-only" ? [1] : []
+    content {
+      role          = "OWNER"
+      user_by_email = google_service_account.app_sa[0].email
+    }
   }
 
   # Grant owner to the user running terraform
