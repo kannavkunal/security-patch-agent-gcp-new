@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "security-patch-agent-gcp-terraform-state"
+    bucket = "security-patch-agent-gcp-new-terraform-state"
     prefix = "security-patch-agent"
   }
 }
