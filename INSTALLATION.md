@@ -1155,6 +1155,46 @@ echo "https://console.cloud.google.com/monitoring/alerting/notifications?project
 
 ## 11. Testing the Deployment
 
+### Configuring Scannable Repositories
+
+**IMPORTANT:** The agent uses a static list of repositories defined in the `VULNERABLE_REPOS` ConfigMap environment variable.
+
+The list of scannable repositories is configured in `.github/workflows/deploy-application.yml` at line ~185:
+
+```yaml
+--from-literal=VULNERABLE_REPOS="https://github.com/kannavkunal/vulnerable-python-web,https://github.com/kannavkunal/vulnerable-node-api,https://github.com/kannavkunal/vulnerable-go-microservice,https://github.com/kannavkunal/vulnerable-java-app" \
+```
+
+**To add or remove repositories:**
+
+1. Edit `.github/workflows/deploy-application.yml`
+2. Update the `VULNERABLE_REPOS` value with comma-separated repository URLs
+3. Commit and push changes
+4. Re-run the deployment workflow or manually update the ConfigMap:
+
+```bash
+kubectl create configmap security-patch-agent-config \
+  --from-literal=VULNERABLE_REPOS="https://github.com/your-org/repo1,https://github.com/your-org/repo2" \
+  -n security-patch-agent \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Restart pods to pick up new configuration
+kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
+```
+
+**Why static configuration?**
+- Simpler than GitHub API discovery (no `repo` scope needed on token)
+- More secure (explicit whitelist, no accidental exposure)
+- Faster (no API calls)
+- Easier to audit and control
+
+To view the current list of scannable repositories:
+```bash
+curl http://$API_URL/repositories | jq .
+```
+
+---
+
 ### Step 11.1: Test Health Endpoint
 
 ```bash
@@ -1179,7 +1219,7 @@ curl -X POST http://$API_URL/scan \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $API_KEY_PRIMARY" \
   -d '{
-    "repo_url": "https://github.com/kannavkunal/vulnerable-python-api",
+    "repo_url": "https://github.com/kannavkunal/vulnerable-python-web",
     "mode": "patch",
     "branch": "main"
   }' | jq .

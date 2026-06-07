@@ -19,7 +19,6 @@ from google.cloud import bigquery
 import uuid
 from datetime import datetime, timedelta
 from github import Github
-import fnmatch
 import time
 
 logging.basicConfig(level=logging.INFO)
@@ -84,7 +83,13 @@ LOCATION = os.getenv("GCP_LOCATION", "us-central1")
 PUBSUB_TOPIC = os.getenv("PUBSUB_TOPIC", "security-scan-events")
 IS_TESTING = os.getenv("TESTING", "false").lower() == "true"
 
-# Repository filtering configuration (from ConfigMap)
+# Repository configuration (from ConfigMap)
+# Static list of vulnerable repositories to scan (comma-separated URLs)
+VULNERABLE_REPOS = os.getenv("VULNERABLE_REPOS", "").split(",") if os.getenv("VULNERABLE_REPOS") else []
+# Clean up any empty strings and strip whitespace
+VULNERABLE_REPOS = [repo.strip() for repo in VULNERABLE_REPOS if repo.strip()]
+
+# Legacy configuration (kept for backward compatibility but not used for discovery)
 ALLOWED_REPO_OWNERS = os.getenv("ALLOWED_REPO_OWNERS", "kannavkunal").split(",")
 ALLOWED_REPO_PATTERN = os.getenv("ALLOWED_REPO_PATTERN", "vulnerable-*")
 EXCLUDED_REPOS = os.getenv("EXCLUDED_REPOS", "").split(",") if os.getenv("EXCLUDED_REPOS") else []
@@ -171,75 +176,15 @@ def get_github_client():
 
 def get_allowed_repositories():
     """
-    Fetch allowed repositories from GitHub API with caching
+    Get allowed repositories from ConfigMap environment variable
 
-    Filters repositories based on:
-    - ALLOWED_REPO_OWNERS: GitHub usernames/organizations
-    - ALLOWED_REPO_PATTERN: Glob pattern for repo names (e.g., "vulnerable-*")
-    - EXCLUDED_REPOS: Specific repos to exclude
+    Returns the static list of repositories defined in VULNERABLE_REPOS.
+    This approach is simpler and doesn't require GitHub API access with repo scope.
 
-    Results are cached for REPO_CACHE_TTL seconds (default 5 minutes)
+    To add/remove repositories, update the VULNERABLE_REPOS ConfigMap value.
     """
-    global _repo_cache, _repo_cache_time
-
-    # Return cached results if still valid
-    if _repo_cache is not None and _repo_cache_time is not None:
-        if (datetime.now() - _repo_cache_time).total_seconds() < REPO_CACHE_TTL:
-            logger.info(f"Returning cached repository list ({len(_repo_cache)} repos)")
-            return _repo_cache
-
-    logger.info("Fetching repositories from GitHub API...")
-
-    try:
-        github = get_github_client()
-        if github is None:
-            logger.warning("GitHub client not available, using empty repository list")
-            return []
-
-        allowed_repos = []
-
-        # Fetch repositories for each allowed owner
-        for owner in ALLOWED_REPO_OWNERS:
-            owner = owner.strip()
-            if not owner:
-                continue
-
-            try:
-                # Try as user first, then as organization
-                try:
-                    repos = github.get_user(owner).get_repos()
-                except:
-                    repos = github.get_organization(owner).get_repos()
-
-                for repo in repos:
-                    # Check pattern match
-                    if fnmatch.fnmatch(repo.name, ALLOWED_REPO_PATTERN):
-                        # Check not excluded
-                        if repo.name not in EXCLUDED_REPOS:
-                            repo_url = repo.html_url.rstrip('/')
-                            if repo_url not in allowed_repos:
-                                allowed_repos.append(repo_url)
-                                logger.info(f"  ✓ {repo.full_name}")
-                        else:
-                            logger.info(f"  ✗ {repo.full_name} (excluded)")
-                    else:
-                        logger.debug(f"  - {repo.full_name} (pattern mismatch)")
-
-            except Exception as e:
-                logger.error(f"Failed to fetch repos for owner '{owner}': {e}")
-                continue
-
-        # Update cache
-        _repo_cache = allowed_repos
-        _repo_cache_time = datetime.now()
-
-        logger.info(f"Discovered {len(allowed_repos)} allowed repositories")
-        return allowed_repos
-
-    except Exception as e:
-        logger.error(f"Failed to fetch repositories from GitHub: {e}")
-        # Return cached data even if expired, or empty list
-        return _repo_cache if _repo_cache is not None else []
+    logger.info(f"Returning configured repository list ({len(VULNERABLE_REPOS)} repos)")
+    return VULNERABLE_REPOS
 
 
 def publish_scan_event(repo_url: str, mode: str, branch: str = "main", pr_number: Optional[int] = None):
@@ -402,19 +347,14 @@ async def test_auth(api_key: str = Depends(verify_api_key)):
 async def repositories_endpoint():
     """
     Get list of allowed repositories that can be scanned
-    Fetches from GitHub API dynamically based on ConfigMap filters
+    Returns static list from VULNERABLE_REPOS ConfigMap
     No authentication required - this is public information
     """
     repos = get_allowed_repositories()
     return {
         "repositories": repos,
         "count": len(repos),
-        "filters": {
-            "owners": ALLOWED_REPO_OWNERS,
-            "pattern": ALLOWED_REPO_PATTERN,
-            "excluded": EXCLUDED_REPOS
-        },
-        "cache_ttl": REPO_CACHE_TTL
+        "source": "ConfigMap (VULNERABLE_REPOS)"
     }
 
 
@@ -427,11 +367,8 @@ async def trigger_scan(
     Trigger a security scan for a repository
     Mode: "patch" (create PR with fixes) or "review" (comment on existing PR)
 
-    Allowed repositories:
-    - https://github.com/kannavkunal/vulnerable-python-api
-    - https://github.com/kannavkunal/vulnerable-java-app
-    - https://github.com/kannavkunal/vulnerable-node-service
-    - https://github.com/kannavkunal/vulnerable-go-microservice
+    Allowed repositories are configured in VULNERABLE_REPOS ConfigMap.
+    Use GET /repositories to see the current list.
     """
     try:
         # Pydantic validation already handled mode, repo_url, and branch
@@ -491,8 +428,9 @@ async def github_webhook(request: Request):
             pr_number = pr.get("number")
             branch = pr.get("head", {}).get("ref", "main")
 
-            # Validate repository is in whitelist (use same whitelist as ScanRequest)
-            if repo_url not in ScanRequest.ALLOWED_REPOS:
+            # Validate repository is in whitelist
+            allowed_repos = get_allowed_repositories()
+            if repo_url not in allowed_repos:
                 logger.warning(f"Webhook received for non-whitelisted repo: {repo_url}")
                 raise HTTPException(
                     status_code=403,
