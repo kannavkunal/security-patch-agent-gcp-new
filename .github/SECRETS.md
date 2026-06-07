@@ -21,7 +21,7 @@ To use the GitHub Actions workflows, you need to configure the following secrets
 **How to get**:
 ```bash
 # Use the existing service account key file
-cat compact-orb-498606-f9-e492d67082b0.json
+cat YOUR_PROJECT_ID-e492d67082b0.json
 ```
 
 **Setup**:
@@ -91,7 +91,7 @@ After adding secrets, verify they are set:
 
 ## Service Account Permissions
 
-The `kunal-kannav@compact-orb-498606-f9.iam.gserviceaccount.com` service account has:
+The `kunal-kannav@YOUR_PROJECT_ID.iam.gserviceaccount.com` service account has:
 - ✅ Owner role (for full infrastructure management)
 - ✅ Workload Identity enabled
 - ✅ Artifact Registry write access
@@ -157,10 +157,10 @@ If a secret is compromised:
 3. For service account:
    ```bash
    # Disable the key in GCP Console
-   gcloud iam service-accounts keys list --iam-account=kunal-kannav@compact-orb-498606-f9.iam.gserviceaccount.com
-   gcloud iam service-accounts keys delete KEY_ID --iam-account=kunal-kannav@compact-orb-498606-f9.iam.gserviceaccount.com
+   gcloud iam service-accounts keys list --iam-account=kunal-kannav@YOUR_PROJECT_ID.iam.gserviceaccount.com
+   gcloud iam service-accounts keys delete KEY_ID --iam-account=kunal-kannav@YOUR_PROJECT_ID.iam.gserviceaccount.com
    # Create new key
-   gcloud iam service-accounts keys create new-key.json --iam-account=kunal-kannav@compact-orb-498606-f9.iam.gserviceaccount.com
+   gcloud iam service-accounts keys create new-key.json --iam-account=kunal-kannav@YOUR_PROJECT_ID.iam.gserviceaccount.com
    ```
 
 4. Update GitHub secret with new value

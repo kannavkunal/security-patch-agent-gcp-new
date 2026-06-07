@@ -68,7 +68,7 @@ None - all variables have defaults
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `project_id` | GCP Project ID | `compact-orb-498606-f9` |
+| `project_id` | GCP Project ID | `YOUR_PROJECT_ID` |
 | `region` | GCP region | `us-central1` |
 | `cluster_name` | GKE cluster name | `code-vulnerability-scanner` |
 | `namespace` | Kubernetes namespace | `security-patch-agent` |
@@ -93,11 +93,11 @@ The `components` variable allows selective deployment:
 
    Create the bucket (one-time setup):
    ```bash
-   gsutil mb -p compact-orb-498606-f9 -l us-central1 \
-     gs://compact-orb-498606-f9-terraform-state
+   gsutil mb -p YOUR_PROJECT_ID -l us-central1 \
+     gs://YOUR_PROJECT_ID-terraform-state
    
    gsutil versioning set on \
-     gs://compact-orb-498606-f9-terraform-state
+     gs://YOUR_PROJECT_ID-terraform-state
    ```
 
 2. **Authenticate to GCP**
@@ -179,7 +179,7 @@ gcloud container clusters get-credentials \
 
 # Get artifact registry URL
 echo $(terraform output -raw artifact_registry_url)
-# Output: us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent
+# Output: us-central1-docker.pkg.dev/YOUR_PROJECT_ID/security-patch-agent
 ```
 
 ## State Management
@@ -189,14 +189,14 @@ echo $(terraform output -raw artifact_registry_url)
 Terraform state is stored in Google Cloud Storage:
 ```hcl
 backend "gcs" {
-  bucket = "compact-orb-498606-f9-terraform-state"
+  bucket = "YOUR_PROJECT_ID-terraform-state"
   prefix = "security-patch-agent"
 }
 ```
 
 ### State File Location
 ```
-gs://compact-orb-498606-f9-terraform-state/security-patch-agent/default.tfstate
+gs://YOUR_PROJECT_ID-terraform-state/security-patch-agent/default.tfstate
 ```
 
 ### Accessing State
@@ -271,7 +271,7 @@ If resources exist outside Terraform:
 ```bash
 # Example: Import existing cluster
 terraform import 'google_container_cluster.primary[0]' \
-  projects/compact-orb-498606-f9/locations/us-central1/clusters/code-vulnerability-scanner
+  projects/YOUR_PROJECT_ID/locations/us-central1/clusters/code-vulnerability-scanner
 ```
 
 ## Destroying Infrastructure
@@ -334,7 +334,7 @@ infracost breakdown --path .
 
 ```bash
 # View current infrastructure cost
-gcloud billing projects describe compact-orb-498606-f9 \
+gcloud billing projects describe YOUR_PROJECT_ID \
   --format="value(billingAccountName)"
 ```
 
@@ -352,7 +352,7 @@ terraform init -reconfigure
 ```bash
 # Import the existing resource
 terraform import google_artifact_registry_repository.docker_repo[0] \
-  projects/compact-orb-498606-f9/locations/us-central1/repositories/security-patch-agent
+  projects/YOUR_PROJECT_ID/locations/us-central1/repositories/security-patch-agent
 ```
 
 ### Error: Insufficient permissions
@@ -365,7 +365,7 @@ Ensure service account has:
 
 ```bash
 gcloud services enable container.googleapis.com \
-  --project=compact-orb-498606-f9
+  --project=YOUR_PROJECT_ID
 ```
 
 ### Error: State lock timeout

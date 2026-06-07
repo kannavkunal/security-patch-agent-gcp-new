@@ -14,7 +14,7 @@ Go to your GitHub repository → **Settings** → **Secrets and variables** → 
 
 | Secret Name | Current Value | New Value (Example) |
 |------------|---------------|---------------------|
-| `GCP_PROJECT_ID` | `compact-orb-498606-f9` | `your-new-project-id` |
+| `GCP_PROJECT_ID` | `YOUR_PROJECT_ID` | `your-new-project-id` |
 | `GCP_SA_KEY` | (current service account key) | (new project's SA key) |
 
 **That's it!** All workflows will now use the new project.
@@ -107,7 +107,7 @@ When you change `GCP_PROJECT_ID` secret, these workflows automatically use the n
 2. **Update Terraform variables** (only if not using GitHub Actions):
    ```bash
    # Edit infrastructure/terraform/variables.tf
-   # Change: default = "compact-orb-498606-f9"
+   # Change: default = "YOUR_PROJECT_ID"
    # To:     default = "YOUR-NEW-PROJECT-ID"
    ```
 

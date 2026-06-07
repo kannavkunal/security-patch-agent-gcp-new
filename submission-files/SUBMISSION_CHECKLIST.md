@@ -116,7 +116,7 @@ open https://github.com/kannavkunal/vulnerable-python-api/pulls
 
 ```bash
 # List evidence files
-gsutil ls gs://security-patch-evidence-compact-orb-498606-f9/kannavkunal/vulnerable-python-api/
+gsutil ls gs://security-patch-evidence-YOUR_PROJECT_ID/kannavkunal/vulnerable-python-api/
 
 # Show summary
 gsutil cat gs://security-patch-evidence-.../00_SUMMARY.md | head -50
@@ -124,7 +124,7 @@ gsutil cat gs://security-patch-evidence-.../00_SUMMARY.md | head -50
 
 ### 4. Analytics Dashboard (1 minute)
 
-Open: https://console.cloud.google.com/monitoring/dashboards?project=compact-orb-498606-f9
+Open: https://console.cloud.google.com/monitoring/dashboards?project=YOUR_PROJECT_ID
 
 Show:
 - Service Overview dashboard (scans, PRs, failures)
@@ -141,7 +141,7 @@ SELECT
   vulnerabilities_found,
   fixes_applied,
   pr_url
-FROM \`compact-orb-498606-f9.security_scans.scans\`
+FROM \`YOUR_PROJECT_ID.security_scans.scans\`
 ORDER BY timestamp DESC
 LIMIT 5
 "
@@ -269,7 +269,7 @@ A: Dependent on Semgrep rule quality. We use 2000+ battle-tested rules. Roadmap 
 **Contact:** kannavkunal@gmail.com  
 **GitHub:** https://github.com/kannavkunal/security-patch-agent  
 **Live System:** http://34.171.214.25  
-**Dashboards:** https://console.cloud.google.com/monitoring/dashboards?project=compact-orb-498606-f9
+**Dashboards:** https://console.cloud.google.com/monitoring/dashboards?project=YOUR_PROJECT_ID
 
 **Category:** Security & Infrastructure Innovation  
 **Submission:** Tessera 2026

@@ -341,7 +341,7 @@ annotations:
 ```
 
 **What to change**:
-- Replace `compact-orb-498606-f9` with your `PROJECT_ID`
+- Replace `YOUR_PROJECT_ID` with your `PROJECT_ID`
 
 ---
 
@@ -455,7 +455,7 @@ find . -type f \( -name "*.yaml" -o -name "*.tf" -o -name "*.sh" \) \
   -not -path "./venv/*" \
   -not -path "./.git/*" \
   -exec sed -i.bak \
-    -e "s/compact-orb-498606-f9/${NEW_PROJECT_ID}/g" \
+    -e "s/YOUR_PROJECT_ID/${NEW_PROJECT_ID}/g" \
     -e "s/kunal@example.com/${NEW_EMAIL}/g" \
     -e "s/199.167.52.5/${NEW_IP}/g" \
     {} +
@@ -481,7 +481,7 @@ Before proceeding to deployment, verify:
 - [ ] GCS bucket name is globally unique
 - [ ] All `.bak` backup files removed
 
-**Tip**: Use `grep -r "compact-orb-498606-f9" .` to find any missed references to the old project ID.
+**Tip**: Use `grep -r "YOUR_PROJECT_ID" .` to find any missed references to the old project ID.
 
 ---
 
@@ -910,7 +910,7 @@ cd ..
 export SA_EMAIL="security-patch-agent@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Update service account annotation
-sed -i.bak "s/compact-orb-498606-f9/${PROJECT_ID}/g" deployment/k8s-manifests/02-serviceaccount.yaml
+sed -i.bak "s/YOUR_PROJECT_ID/${PROJECT_ID}/g" deployment/k8s-manifests/02-serviceaccount.yaml
 
 # Apply all manifests
 kubectl apply -f deployment/k8s-manifests/01-namespace.yaml

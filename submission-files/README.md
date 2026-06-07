@@ -116,17 +116,17 @@ kubectl logs -n security-patch-agent <job-pod-name>
 # Check BigQuery analytics
 bq query --use_legacy_sql=false \
   "SELECT scan_id, vulnerabilities_found, fixes_applied, pr_url 
-   FROM \`compact-orb-498606-f9.security_scans.scans\` 
+   FROM \`YOUR_PROJECT_ID.security_scans.scans\` 
    ORDER BY timestamp DESC LIMIT 5"
 ```
 
 ### Evidence Files (GCS)
 ```bash
 # List generated evidence
-gsutil ls gs://security-patch-evidence-compact-orb-498606-f9/kannavkunal/vulnerable-python-api/
+gsutil ls gs://security-patch-evidence-YOUR_PROJECT_ID/kannavkunal/vulnerable-python-api/
 
 # View CVSS reports, attack patterns, patches
-gsutil cat gs://security-patch-evidence-compact-orb-498606-f9/kannavkunal/vulnerable-python-api/scan-*/findings/F-01-*.md
+gsutil cat gs://security-patch-evidence-YOUR_PROJECT_ID/kannavkunal/vulnerable-python-api/scan-*/findings/F-01-*.md
 ```
 
 ---

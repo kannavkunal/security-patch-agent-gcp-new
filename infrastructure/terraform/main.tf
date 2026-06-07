@@ -33,15 +33,20 @@ provider "google-beta" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "container.googleapis.com",
-    "compute.googleapis.com",
-    "artifactregistry.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "monitoring.googleapis.com",
-    "logging.googleapis.com",
-    "cloudtrace.googleapis.com",
-    "aiplatform.googleapis.com",
-    "servicenetworking.googleapis.com",
+    "cloudresourcemanager.googleapis.com",  # Required for IAM policy management
+    "iam.googleapis.com",                   # IAM and service accounts
+    "container.googleapis.com",             # GKE
+    "compute.googleapis.com",               # Compute Engine (for GKE nodes)
+    "artifactregistry.googleapis.com",      # Artifact Registry
+    "cloudbuild.googleapis.com",            # Cloud Build
+    "monitoring.googleapis.com",            # Cloud Monitoring
+    "logging.googleapis.com",               # Cloud Logging
+    "cloudtrace.googleapis.com",            # Cloud Trace
+    "aiplatform.googleapis.com",            # Vertex AI
+    "servicenetworking.googleapis.com",     # Service Networking
+    "secretmanager.googleapis.com",         # Secret Manager
+    "pubsub.googleapis.com",                # Pub/Sub
+    "bigquery.googleapis.com",              # BigQuery
   ])
 
   service            = each.value
