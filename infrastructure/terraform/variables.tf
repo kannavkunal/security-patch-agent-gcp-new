@@ -24,7 +24,7 @@ variable "namespace" {
 variable "k8s_service_account" {
   description = "Kubernetes service account name"
   type        = string
-  default     = "security-patch-agent"
+  default     = "security-patch-agent-sa"
 }
 
 variable "artifact_registry_repo" {
