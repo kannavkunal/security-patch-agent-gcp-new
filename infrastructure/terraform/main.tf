@@ -12,12 +12,11 @@ terraform {
     }
   }
 
-  # Backend disabled - using local state
-  # For production, create a GCS bucket and enable remote state
-  # backend "gcs" {
-  #   bucket = "YOUR-PROJECT-ID-terraform-state"
-  #   prefix = "security-patch-agent"
-  # }
+  # Remote state backend - state persists between GitHub Actions runs
+  backend "gcs" {
+    bucket = "security-patch-agent-gcp-terraform-state"
+    prefix = "terraform/state"
+  }
 }
 
 provider "google" {

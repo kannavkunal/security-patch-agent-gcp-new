@@ -52,6 +52,15 @@ jobs:
       with:
         terraform_version: 1.7.0
 
+    - name: Create Terraform State Bucket
+      run: |
+        # Create GCS bucket for Terraform remote state if it doesn't exist
+        gsutil ls -b gs://$PROJECT_ID-terraform-state 2>/dev/null || \
+        gsutil mb -p $PROJECT_ID -l $GKE_REGION gs://$PROJECT_ID-terraform-state
+
+        # Enable versioning for state file protection
+        gsutil versioning set on gs://$PROJECT_ID-terraform-state
+
     - name: Terraform Init
       run: |
         cd infrastructure/terraform
