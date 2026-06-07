@@ -13,8 +13,8 @@ terraform {
   }
 
   # Remote state backend - state persists between GitHub Actions runs
+  # Bucket name provided via -backend-config during terraform init
   backend "gcs" {
-    bucket = "security-patch-agent-gcp-terraform-state"
     prefix = "terraform/state"
   }
 }

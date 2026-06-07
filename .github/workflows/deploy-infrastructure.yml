@@ -54,17 +54,28 @@ jobs:
 
     - name: Create Terraform State Bucket
       run: |
-        # Create GCS bucket for Terraform remote state if it doesn't exist
-        gsutil ls -b gs://$PROJECT_ID-terraform-state 2>/dev/null || \
-        gsutil mb -p $PROJECT_ID -l $GKE_REGION gs://$PROJECT_ID-terraform-state
+        BUCKET_NAME="${PROJECT_ID}-terraform-state"
+
+        echo "Checking if state bucket exists: gs://${BUCKET_NAME}"
+
+        # Check if bucket exists
+        if gsutil ls -b "gs://${BUCKET_NAME}" 2>/dev/null; then
+          echo "✓ Bucket already exists"
+        else
+          echo "Creating state bucket: gs://${BUCKET_NAME}"
+          gsutil mb -p $PROJECT_ID -l $GKE_REGION "gs://${BUCKET_NAME}"
+          echo "✓ Bucket created"
+        fi
 
         # Enable versioning for state file protection
-        gsutil versioning set on gs://$PROJECT_ID-terraform-state
+        echo "Enabling versioning..."
+        gsutil versioning set on "gs://${BUCKET_NAME}"
+        echo "✓ Versioning enabled"
 
     - name: Terraform Init
       run: |
         cd infrastructure/terraform
-        terraform init
+        terraform init -backend-config="bucket=${PROJECT_ID}-terraform-state"
 
     - name: Terraform Validate
       run: |
