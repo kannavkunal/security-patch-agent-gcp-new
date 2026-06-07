@@ -250,8 +250,6 @@ MIT License - see [LICENSE](LICENSE)
 
 ## 🙏 Acknowledgments
 
-Built for **Tessera Labs** Senior Software Engineer take-home assignment (June 2025).
-
 **Technologies:** Google Cloud Platform, Vertex AI (Gemini 2.5 Pro), Python (FastAPI), Kubernetes, Terraform, GitHub Actions
 
 ---
