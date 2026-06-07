@@ -207,78 +207,20 @@ jobs:
         cd infrastructure/terraform
         terraform init -reconfigure
 
-    - name: Import Existing Resources
+    - name: Skip Import (Use Monitoring-Only Mode Instead)
       run: |
-        cd infrastructure/terraform
-
-        echo "🔄 Importing existing resources into Terraform state..."
-
-        # Function to import with error handling
-        import_resource() {
-          local resource=$1
-          local id=$2
-
-          # Try to import and capture output
-          output=$(terraform import \
-            -var="project_id=$PROJECT_ID" \
-            -var="region=$GKE_REGION" \
-            "$resource" "$id" 2>&1)
-
-          # Check if successful or already managed
-          if echo "$output" | grep -qi "import successful\|already.* managed"; then
-            echo "✅ $resource"
-            return 0
-          elif echo "$output" | grep -qi "error.*409\|already exists"; then
-            echo "⚠️  $resource (already exists - will skip creation)"
-            return 0
-          elif echo "$output" | grep -qi "cannot import.*does not exist\|not found"; then
-            echo "⏭️  $resource (doesn't exist yet - will create)"
-            return 0
-          else
-            echo "⏭️  $resource (skipped)"
-            return 0
-          fi
-        }
-
-        # Import GKE cluster (if deploying infrastructure)
-        if [ "${{ github.event.inputs.infrastructure_components }}" != "monitoring-only" ]; then
-          import_resource "google_container_cluster.primary[0]" "projects/$PROJECT_ID/locations/$GKE_REGION/clusters/code-vulnerability-scanner"
-        fi
-
-        # Import core infrastructure
-        import_resource "google_storage_bucket.evidence_bucket" "security-patch-evidence-$PROJECT_ID"
-        import_resource "google_compute_network.vpc[0]" "projects/$PROJECT_ID/global/networks/code-vulnerability-scanner-vpc"
-        import_resource "google_compute_subnetwork.subnet[0]" "projects/$PROJECT_ID/regions/$GKE_REGION/subnetworks/code-vulnerability-scanner-subnet"
-        import_resource "google_service_account.app_sa[0]" "projects/$PROJECT_ID/serviceAccounts/security-patch-agent@$PROJECT_ID.iam.gserviceaccount.com"
-        import_resource "google_artifact_registry_repository.docker_repo[0]" "projects/$PROJECT_ID/locations/$GKE_REGION/repositories/security-patch-agent"
-
-        # Import Pub/Sub
-        import_resource "google_pubsub_topic.security_scan_events" "projects/$PROJECT_ID/topics/security-scan-events"
-        import_resource "google_pubsub_topic.dead_letter" "projects/$PROJECT_ID/topics/security-scan-events-dlq"
-        import_resource "google_pubsub_subscription.scan_events_sub" "projects/$PROJECT_ID/subscriptions/scan-events-subscription"
-        import_resource "google_pubsub_subscription.dead_letter_sub" "projects/$PROJECT_ID/subscriptions/scan-events-dlq-subscription"
-
-        # Import BigQuery
-        import_resource "google_bigquery_dataset.security_scans" "projects/$PROJECT_ID/datasets/security_scans"
-        import_resource "google_bigquery_table.scans" "projects/$PROJECT_ID/datasets/security_scans/tables/scans"
-        import_resource "google_bigquery_table.vulnerabilities" "projects/$PROJECT_ID/datasets/security_scans/tables/vulnerabilities"
-        import_resource "google_bigquery_table.patches" "projects/$PROJECT_ID/datasets/security_scans/tables/patches"
-        import_resource "google_bigquery_table.scan_outcomes" "projects/$PROJECT_ID/datasets/security_scans/tables/scan_outcomes"
-
-        # Import logging metrics
-        import_resource "google_logging_metric.scan_completed" "projects/$PROJECT_ID/metrics/security_patch_agent_scans_completed"
-        import_resource "google_logging_metric.scan_failed" "projects/$PROJECT_ID/metrics/security_patch_agent_scans_failed"
-        import_resource "google_logging_metric.pr_created" "projects/$PROJECT_ID/metrics/security_patch_agent_prs_created"
-        import_resource "google_logging_metric.evidence_generated" "projects/$PROJECT_ID/metrics/security_patch_agent_evidence_generated"
-        import_resource "google_logging_metric.api_requests" "projects/$PROJECT_ID/metrics/security_patch_agent_api_requests"
-
-        # Import secrets
-        import_resource "google_secret_manager_secret.github_token" "projects/$PROJECT_ID/secrets/github-token"
-        import_resource "google_secret_manager_secret.github_webhook_secret" "projects/$PROJECT_ID/secrets/github-webhook-secret"
-
+        echo "⚠️  IMPORTANT: If resources already exist, use 'monitoring-only' mode"
         echo ""
-        echo "✅ Import step complete!"
-        echo "Note: Resources that don't exist or are already imported are skipped."
+        echo "This deployment has 'components=${{ github.event.inputs.infrastructure_components }}'"
+        echo ""
+        if [ "${{ github.event.inputs.infrastructure_components }}" = "monitoring-only" ]; then
+          echo "✅ Using monitoring-only mode - will not create GKE/Pub/Sub/BigQuery"
+          echo "   Only monitoring dashboards and alerts will be deployed"
+        else
+          echo "⚠️  WARNING: This will attempt to create all infrastructure"
+          echo "   If resources already exist, you may see 409 errors"
+          echo "   Recommendation: Cancel and re-run with 'monitoring-only'"
+        fi
 
     - name: Terraform Plan
       run: |

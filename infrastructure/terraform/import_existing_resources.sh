@@ -2,12 +2,13 @@
 # Import existing GCP resources into Terraform state
 # Run this from the terraform directory: ./import_existing_resources.sh
 
-set -e
+set +e  # Don't exit on errors
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}🔄 Importing Existing GCP Resources into Terraform State${NC}"
@@ -17,15 +18,29 @@ echo ""
 # Read project ID from terraform.tfvars or prompt user
 if [ -f "terraform.tfvars" ]; then
     PROJECT_ID=$(grep 'project_id' terraform.tfvars | cut -d'=' -f2 | tr -d ' "')
+    if [ -z "$PROJECT_ID" ]; then
+        echo -e "${YELLOW}Please enter your GCP Project ID:${NC}"
+        read PROJECT_ID
+    fi
 else
-    echo -e "${YELLOW}Please enter your GCP Project ID:${NC}"
+    echo -e "${YELLOW}terraform.tfvars not found. Please enter your GCP Project ID:${NC}"
     read PROJECT_ID
 fi
 
 REGION="us-central1"
 
-echo "Project ID: $PROJECT_ID"
-echo "Region: $REGION"
+echo -e "${BLUE}Project ID: $PROJECT_ID${NC}"
+echo -e "${BLUE}Region: $REGION${NC}"
+echo ""
+
+# Verify gcloud auth
+if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
+    echo -e "${RED}ERROR: Not authenticated with gcloud${NC}"
+    echo "Please run: gcloud auth login"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Authenticated with gcloud${NC}"
 echo ""
 
 # Function to import resource with error handling
