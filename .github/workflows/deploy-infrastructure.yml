@@ -52,36 +52,6 @@ jobs:
       with:
         terraform_version: 1.7.0
 
-    - name: Create Terraform State Bucket
-      run: |
-        set -e  # Exit on any error
-        BUCKET_NAME="security-patch-agent-gcp-terraform-state"
-
-        echo "Project ID: $PROJECT_ID"
-        echo "Bucket name: $BUCKET_NAME"
-        echo "Region: $GKE_REGION"
-        echo ""
-
-        # Check if bucket exists
-        if gsutil ls -b "gs://${BUCKET_NAME}"; then
-          echo "✓ Bucket already exists"
-        else
-          echo "Creating state bucket..."
-          gsutil mb -p "$PROJECT_ID" -l "$GKE_REGION" "gs://${BUCKET_NAME}"
-          echo "✓ Bucket created successfully"
-        fi
-
-        # Enable versioning
-        echo "Enabling versioning..."
-        gsutil versioning set on "gs://${BUCKET_NAME}"
-        echo "✓ Versioning enabled"
-
-        # Verify bucket exists
-        echo ""
-        echo "Verifying bucket..."
-        gsutil ls -b "gs://${BUCKET_NAME}"
-        echo "✓ Bucket verified!"
-
     - name: Terraform Init
       run: |
         cd infrastructure/terraform
