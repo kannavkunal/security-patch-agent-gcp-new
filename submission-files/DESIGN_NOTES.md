@@ -498,5 +498,8 @@ The implementation showcases how to build security automation systems that are s
 ---
 
 **For questions or clarifications, contact:** kannavkunal@gmail.com  
-**Live demo:** http://34.171.214.25/  
+**Live demo:** http://34.67.157.196/  
+**Example PRs:**
+- [PR #8](https://github.com/kannavkunal/vulnerable-python-api/pull/8) - Fixed 23 Python vulnerabilities
+- [PR #3](https://github.com/kannavkunal/vulnerable-node-service/pull/3) - Fixed 9 JavaScript vulnerabilities  
 **GitHub:** https://github.com/kannavkunal/security-patch-agent

@@ -1,496 +1,44 @@
-# Security Patch Agent - Complete Installation Guide
+# Security Patch Agent - Installation Guide
 
-> **Complete end-to-end guide for deploying Security Patch Agent to Google Cloud Platform**
-
-This guide walks you through deploying the Security Patch Agent from scratch, starting with creating a GCP account to having a fully functional security scanning system.
+> **Deploy to GCP in 20 minutes using GitHub Actions automation**
 
 ---
 
-## 📋 Table of Contents
+## Installation Flow
 
-1. [Prerequisites](#1-prerequisites)
-2. [GCP Account & Project Setup](#2-gcp-account--project-setup)
-3. [Configuration Files to Modify](#3-configuration-files-to-modify)
-4. [Enable Required APIs](#4-enable-required-apis)
-5. [Create Service Account & Permissions](#5-create-service-account--permissions)
-6. [Setup GitHub Repository & Tokens](#6-setup-github-repository--tokens)
-7. [GCP Infrastructure Setup](#7-gcp-infrastructure-setup)
-8. [GKE Cluster Creation](#8-gke-cluster-creation)
-9. [Build & Deploy Application](#9-build--deploy-application)
-10. [Configure Secrets](#10-configure-secrets)
-11. [Setup Monitoring](#11-setup-monitoring)
-12. [Testing the Deployment](#12-testing-the-deployment)
-13. [Configure GitHub Webhooks (Optional)](#13-configure-github-webhooks-optional)
-14. [Troubleshooting](#14-troubleshooting)
+```
+Prerequisites (15 min) → Run GitHub Actions Pipeline (10 min) → Testing (5 min)
+```
 
 ---
 
-## 1. Prerequisites
+## Part 1: Prerequisites (Manual Setup)
 
-### 1.1 Install Required Tools
-
-**IMPORTANT:** Install these tools BEFORE proceeding with deployment.
-
-#### **Step 1: Install gcloud CLI (Google Cloud SDK)**
-
-**macOS:**
-```bash
-brew install google-cloud-sdk
-
-# Initialize gcloud
-gcloud init
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-sudo apt-get update && sudo apt-get install -y google-cloud-sdk
-
-# Initialize gcloud
-gcloud init
-```
-
-**Windows:**
-Download from: https://cloud.google.com/sdk/docs/install
-
-**Verify gcloud installation:**
-```bash
-gcloud --version
-# Should output: Google Cloud SDK 4xx.x.x
-```
-
-#### **Step 2: Install Other Required Tools**
+### 1.1 Install Tools
 
 ```bash
 # macOS
-brew install kubectl docker jq git terraform
+brew install google-cloud-sdk kubectl terraform git
 
-# Linux (Ubuntu/Debian)
-sudo apt-get install -y kubectl docker.io jq git
-
-# Install Terraform (Linux)
-wget https://releases.hashicorp.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip
-unzip terraform_1.7.0_linux_amd64.zip
-sudo mv terraform /usr/local/bin/
-
-# Verify all installations
-kubectl version --client
-docker --version
-jq --version
-git --version
+# Verify
+gcloud --version
+kubectl version --client  
 terraform --version
 ```
 
-### Required Accounts
-
-1. **Google Cloud Account**: https://cloud.google.com
-2. **GitHub Account**: https://github.com
-3. **Google AI Studio Account** (for Gemini API): https://aistudio.google.com
-
----
-
-## 🔑 Authentication Guide
-
-**Prerequisites:** 
-- ✅ gcloud CLI installed (Section 1.1)
-- ✅ Google Cloud account created (Section 2.1)
-
-**Now authenticate to use gcloud commands:**
-
-### Required: Personal Google Account Authentication
+### 1.2 Create GCP Project
 
 ```bash
-# Step 1: Login with your Google account (REQUIRED - do this first!)
-gcloud auth login
-```
-
-**What this does:**
-- Opens browser for Google login
-- Authenticates YOU (as a person)
-- Stores credentials locally (~/.config/gcloud/)
-
-**What you can do after authentication:**
-- ✅ Create projects
-- ✅ Enable APIs
-- ✅ Run Terraform
-- ✅ Manage GKE clusters
-- ✅ Run kubectl commands
-- ✅ Deploy applications
-
-### Optional: Service Account (for automation)
-
-```bash
-# Step 2: Create service account key (OPTIONAL)
-gcloud iam service-accounts keys create ~/gcp-sa-key.json --iam-account=...
-gcloud auth activate-service-account --key-file=~/gcp-sa-key.json
-```
-
-This authenticates SCRIPTS/CI-CD and is only needed for:
-- ⚠️ Automated deployments
-- ⚠️ CI/CD pipelines
-- ⚠️ Scripts that can't use browser login
-
-**For this installation guide:** Use your personal account (`gcloud auth login`). Service account is optional.
-
----
-
-## 2. GCP Account & Project Setup
-
-### Step 2.1: Create GCP Account
-
-1. Go to https://cloud.google.com
-2. Click **"Get started for free"**
-3. Sign in with your Google account
-4. Complete billing setup (new users get $300 free credit for 90 days)
-
-### Step 2.2: Authenticate with Google Account
-
-**IMPORTANT:** First, authenticate with your personal Google account:
-
-```bash
-# Login to GCP with your Google account (opens browser)
-gcloud auth login
-```
-
-This will:
-1. Open your browser for authentication
-2. Ask you to select your Google account
-3. Grant gcloud CLI permission to manage GCP resources
-4. Save credentials locally
-
-**Note:** This is different from service account authentication (covered later). `gcloud auth login` uses your personal Google account for administrative tasks.
-
-### Step 2.3: Create New Project
-
-```bash
-# Set variables (customize these)
-export PROJECT_ID="security-patch-agent-$(date +%s)"
-export REGION="us-central1"
-export ZONE="us-central1-a"
+export PROJECT_ID="security-patch-agent-gcp"
 
 # Create project
 gcloud projects create $PROJECT_ID --name="Security Patch Agent"
-
-# Set default project
 gcloud config set project $PROJECT_ID
-
-# Link billing account (find your billing account ID first)
-gcloud billing accounts list
-export BILLING_ACCOUNT_ID="YOUR_BILLING_ACCOUNT_ID"
-gcloud billing projects link $PROJECT_ID --billing-account=$BILLING_ACCOUNT_ID
-
-# Set default region and zone
-gcloud config set compute/region $REGION
-gcloud config set compute/zone $ZONE
-
-# Verify project setup
-gcloud config list
 ```
 
-**Save these values** - you'll need them throughout the installation:
-- `PROJECT_ID`: Your GCP project ID
-- `REGION`: us-central1 (or your preferred region)
-- `ZONE`: us-central1-a (or your preferred zone)
-
----
-
-## 2a. Service Account Authentication (Optional - For Local kubectl)
-
-**When to use this:** If you want to run kubectl commands from your local machine to manage the GKE cluster.
-
-**Authentication Methods:**
-- **Personal Account** (`gcloud auth login`) - ✅ Already done in Step 2.2
-  - Used for: gcloud commands, Terraform, general GCP management
-  - Good for: Interactive use, development
-  
-- **Service Account** (this section) - ⚠️ Optional
-  - Used for: Automated kubectl access, CI/CD pipelines
-  - Good for: Scripts that need kubectl without browser login
-  - **Not required** if using `gcloud auth login` + `gcloud container clusters get-credentials`
-
-**Skip this section if:** You're fine using your personal account for kubectl commands.
-
-### Step 2a.1: Download Service Account Key (Optional)
+### 1.3 Enable Required APIs
 
 ```bash
-# Create a service account (if not already created)
-gcloud iam service-accounts create deployment-manager \
-  --display-name="Deployment Manager" \
-  --project=$PROJECT_ID
-
-# Grant necessary roles
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:deployment-manager@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/container.admin"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:deployment-manager@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-
-# Download service account key
-gcloud iam service-accounts keys create ~/gcp-sa-key.json \
-  --iam-account=deployment-manager@$PROJECT_ID.iam.gserviceaccount.com
-
-# Activate service account
-gcloud auth activate-service-account --key-file=~/gcp-sa-key.json
-```
-
-### Step 2a.2: Get GKE Cluster Credentials (Two Options)
-
-**Option A: Using Personal Account (Simpler)**
-
-```bash
-# Already authenticated? Just get cluster credentials
-gcloud container clusters get-credentials code-vulnerability-scanner \
-  --region=us-central1 \
-  --project=$PROJECT_ID
-
-# Verify kubectl access (use --insecure-skip-tls-verify for certificate issues)
-kubectl get pods -n security-patch-agent --insecure-skip-tls-verify
-```
-
-**Option B: Using Service Account (For Automation)**
-
-If you created a service account key in Step 2a.1:
-
-```bash
-# Activate service account (instead of gcloud auth login)
-gcloud auth activate-service-account --key-file=~/gcp-sa-key.json
-
-# Get cluster credentials
-gcloud container clusters get-credentials code-vulnerability-scanner \
-  --region=us-central1 \
-  --project=$PROJECT_ID
-
-# Verify kubectl access
-kubectl get pods -n security-patch-agent --insecure-skip-tls-verify
-```
-
-### Step 2a.3: Test kubectl Commands
-
-```bash
-# List namespaces
-kubectl get namespaces --insecure-skip-tls-verify
-
-# List services
-kubectl get svc -n security-patch-agent --insecure-skip-tls-verify
-
-# List jobs
-kubectl get jobs -n security-patch-agent --insecure-skip-tls-verify
-
-# View pod logs
-kubectl logs -n security-patch-agent -l app=security-patch-agent --insecure-skip-tls-verify --tail=50
-
-# Get secret (API keys)
-kubectl get secret security-patch-agent-api-keys -n security-patch-agent --insecure-skip-tls-verify -o jsonpath='{.data.api-keys}' | base64 -d
-```
-
-**Important:** Keep `~/gcp-sa-key.json` secure and add it to `.gitignore`. Never commit service account keys to Git.
-
----
-
-## 3. Configuration Files to Modify
-
-Before deploying, you need to update several configuration files with your project-specific values. Here's a comprehensive list:
-
-### 📝 Files That MUST Be Modified
-
-#### 1. **infrastructure/terraform/variables.tf**
-
-Replace default values with your settings:
-
-```bash
-# Edit the file
-vi infrastructure/terraform/variables.tf
-
-# Update these variables:
-variable "project_id" {
-  default     = "YOUR_PROJECT_ID"  # Change this
-}
-
-variable "alert_email" {
-  default     = "YOUR_EMAIL@example.com"  # Change this
-}
-
-variable "whitelisted_ips" {
-  default     = ["YOUR_IP_ADDRESS/32"]  # Change this
-}
-```
-
-**What to change**:
-- `project_id`: Your GCP project ID (e.g., `security-patch-agent-1234567890`)
-- `alert_email`: Your email for monitoring alerts
-- `whitelisted_ips`: Your office/VPN IP addresses for API access
-
----
-
-#### 2. **deployment/k8s-manifests/02-serviceaccount.yaml**
-
-Update service account annotation:
-
-```bash
-# Edit the file
-vi deployment/k8s-manifests/02-serviceaccount.yaml
-
-# Find and replace:
-annotations:
-  iam.gke.io/gcp-service-account: security-patch-agent@YOUR_PROJECT_ID.iam.gserviceaccount.com
-```
-
-**What to change**:
-- Replace `YOUR_PROJECT_ID` with your `PROJECT_ID`
-
----
-
-#### 3. **deployment/k8s-manifests/05-deployment.yaml**
-
-Update environment variables:
-
-```bash
-# Edit the file
-vi deployment/k8s-manifests/05-deployment.yaml
-
-# Update these env vars:
-- name: GCP_PROJECT_ID
-  value: "YOUR_PROJECT_ID"
-- name: GCS_BUCKET
-  value: "security-patch-evidence-YOUR_PROJECT_ID"
-```
-
-**What to change**:
-- `GCP_PROJECT_ID`: Your project ID
-- `GCS_BUCKET`: Your evidence bucket name (must be globally unique)
-
----
-
-#### 4. **test_e2e_complete.sh**
-
-Update API URL:
-
-```bash
-# Edit the file
-vi test_e2e_complete.sh
-
-# Change line 4:
-API_URL="http://YOUR_LOAD_BALANCER_IP"
-```
-
-**What to change**:
-- Replace `34.171.214.25` with your LoadBalancer external IP (get this after deployment)
-
----
-
-#### 5. **test_review_mode.sh**
-
-Update API URL and project ID:
-
-```bash
-# Edit the file
-vi test_review_mode.sh
-
-# Update:
-API_URL="http://YOUR_LOAD_BALANCER_IP"
-PROJECT_ID="YOUR_PROJECT_ID"
-```
-
----
-
-#### 6. **setup_monitoring.sh**
-
-Update project ID:
-
-```bash
-# Edit the file
-vi setup_monitoring.sh
-
-# Change line 4:
-PROJECT_ID="YOUR_PROJECT_ID"
-```
-
----
-
-#### 7. **infrastructure/scripts/deploy.sh**
-
-Update deployment script variables:
-
-```bash
-# Edit the file
-vi infrastructure/scripts/deploy.sh
-
-# Update lines 5-8:
-PROJECT_ID="YOUR_PROJECT_ID"
-REGION="YOUR_REGION"
-CLUSTER_NAME="YOUR_CLUSTER_NAME"
-REPOSITORY_NAME="YOUR_REGISTRY_NAME"
-```
-
----
-
-### 📝 Files You Can Keep As-Is
-
-These files use environment variables or runtime configuration:
-
-- ✅ **app/main.py** - Reads from environment variables
-- ✅ **app/config.py** - Uses env vars from Kubernetes
-- ✅ **requirements.txt** - No changes needed
-- ✅ **app/Dockerfile** - Generic, no project-specific values
-
----
-
-### 🔧 Quick Find & Replace Script
-
-Use this script to automatically replace values in all files:
-
-```bash
-# Save your configuration
-export NEW_PROJECT_ID="your-project-id-here"
-export NEW_EMAIL="your-email@example.com"
-export NEW_IP="1.2.3.4"
-
-# Run find & replace
-find . -type f \( -name "*.yaml" -o -name "*.tf" -o -name "*.sh" \) \
-  -not -path "./venv/*" \
-  -not -path "./.git/*" \
-  -exec sed -i.bak \
-    -e "s/YOUR_PROJECT_ID/${NEW_PROJECT_ID}/g" \
-    -e "s/kunal@example.com/${NEW_EMAIL}/g" \
-    -e "s/199.167.52.5/${NEW_IP}/g" \
-    {} +
-
-# Remove backup files
-find . -name "*.bak" -delete
-
-echo "✅ Configuration updated!"
-echo "Review changes: git diff"
-```
-
----
-
-### ✅ Verification Checklist
-
-Before proceeding to deployment, verify:
-
-- [ ] `PROJECT_ID` updated in all Terraform files
-- [ ] `PROJECT_ID` updated in all Kubernetes manifests
-- [ ] Service account email matches your project
-- [ ] Email address set for monitoring alerts
-- [ ] Test scripts point to correct API URL
-- [ ] GCS bucket name is globally unique
-- [ ] All `.bak` backup files removed
-
-**Tip**: Use `grep -r "YOUR_PROJECT_ID" .` to find any missed references to the old project ID.
-
----
-
-## 4. Enable Required APIs
-
-Enable all necessary GCP APIs for the project:
-
-```bash
-# Enable APIs (this may take 2-3 minutes)
 gcloud services enable \
   container.googleapis.com \
   artifactregistry.googleapis.com \
@@ -504,1100 +52,541 @@ gcloud services enable \
   cloudresourcemanager.googleapis.com \
   iam.googleapis.com \
   compute.googleapis.com
-
-# Verify APIs are enabled
-gcloud services list --enabled | grep -E "(container|artifact|pubsub|bigquery|storage|secret)"
 ```
 
-Expected output should show all services enabled:
+**Time:** 1-2 minutes
+
+### 1.4 Authenticate
+
+**Personal Account:**
+```bash
+gcloud auth login
+gcloud auth application-default login
 ```
-bigquery.googleapis.com
-container.googleapis.com
-artifactregistry.googleapis.com
-pubsub.googleapis.com
-secretmanager.googleapis.com
-storage.googleapis.com
+
+**Service Account (for CI/CD):**
+```bash
+gcloud auth activate-service-account \
+  --key-file=/path/to/key.json
+  
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
 ```
 
----
+### 1.5 Create Secret Manager Secrets
 
-## 4. Create Service Account & Permissions
+**Only 2 secrets needed** (Vertex AI uses Workload Identity):
 
-### Step 4.1: Create GCP Service Account
+**GitHub Token:**
+1. Go to: https://github.com/settings/tokens
+2. Generate token (classic), scope: `repo`
+3. Save token
 
 ```bash
-# Create service account
-gcloud iam service-accounts create security-patch-agent \
-  --display-name="Security Patch Agent Service Account" \
-  --description="Service account for security vulnerability scanning and remediation"
-
-# Get service account email
-export SA_EMAIL="security-patch-agent@${PROJECT_ID}.iam.gserviceaccount.com"
-echo "Service Account Email: $SA_EMAIL"
+echo -n "ghp_YOUR_TOKEN" | gcloud secrets create github-token \
+  --project=$PROJECT_ID \
+  --data-file=- \
+  --replication-policy="automatic"
 ```
 
-### Step 4.2: Grant IAM Permissions
-
+**Webhook Secret:**
 ```bash
-# Grant necessary roles to service account
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/container.developer"
+WEBHOOK_SECRET=$(openssl rand -hex 32)
+echo "Save this: $WEBHOOK_SECRET"  # For GitHub webhook config later
 
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/pubsub.editor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/bigquery.dataEditor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/storage.objectAdmin"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/aiplatform.user"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/monitoring.metricWriter"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/logging.logWriter"
-
-# Verify permissions
-gcloud projects get-iam-policy $PROJECT_ID \
-  --flatten="bindings[].members" \
-  --filter="bindings.members:serviceAccount:${SA_EMAIL}"
-```
-
-### Step 4.3: Create Service Account Key (for local development)
-
-```bash
-# Create key file
-gcloud iam service-accounts keys create ~/security-patch-agent-key.json \
-  --iam-account=$SA_EMAIL
-
-# Set environment variable
-export GOOGLE_APPLICATION_CREDENTIALS=~/security-patch-agent-key.json
-
-echo "Service account key saved to: ~/security-patch-agent-key.json"
-echo "KEEP THIS FILE SECURE - DO NOT COMMIT TO GIT"
-```
-
----
-
-## 5. Setup GitHub Repository & Tokens
-
-### Step 5.1: Fork or Clone Repository
-
-```bash
-# Option A: Clone the repository
-git clone https://github.com/kannavkunal/security-patch-agent.git
-cd security-patch-agent
-
-# Option B: Fork on GitHub, then clone your fork
-# Go to https://github.com/kannavkunal/security-patch-agent
-# Click "Fork" button
-# Then clone:
-git clone https://github.com/YOUR_USERNAME/security-patch-agent.git
-cd security-patch-agent
-```
-
-### Step 5.2: Create GitHub Personal Access Token
-
-1. Go to GitHub Settings: https://github.com/settings/tokens
-2. Click **"Generate new token (classic)"**
-3. Give it a descriptive name: `security-patch-agent`
-4. Set expiration: **No expiration** (or 1 year)
-5. Select scopes:
-   - ✅ **repo** (all)
-   - ✅ **workflow**
-   - ✅ **write:packages**
-6. Click **"Generate token"**
-7. **Copy the token immediately** - you won't see it again!
-
-```bash
-# Save token as environment variable
-export GITHUB_TOKEN="ghp_YOUR_TOKEN_HERE"
-echo $GITHUB_TOKEN  # Verify it's set
-```
-
-### Step 5.3: Get Gemini API Key
-
-1. Go to Google AI Studio: https://aistudio.google.com/app/apikey
-2. Click **"Create API Key"**
-3. Select your GCP project
-4. Copy the API key
-
-```bash
-# Save Gemini API key
-export GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
-echo $GEMINI_API_KEY  # Verify it's set
-```
-
-### Step 5.4: Generate HMAC Secret for Webhooks
-
-```bash
-# Generate random HMAC secret (256-bit)
-export WEBHOOK_SECRET=$(openssl rand -hex 32)
-echo "Webhook Secret: $WEBHOOK_SECRET"
-# Save this - you'll need it when configuring GitHub webhooks
-```
-
----
-
-## 6. GCP Infrastructure Setup
-
-### Step 6.1: Create BigQuery Dataset
-
-```bash
-# Create dataset for scan logs
-bq --location=$REGION mk \
-  --dataset \
-  --description="Security scan analytics" \
-  ${PROJECT_ID}:security_scans
-
-# Create scans table
-bq mk --table \
-  ${PROJECT_ID}:security_scans.scans \
-  scan_id:STRING,timestamp:TIMESTAMP,repo_name:STRING,repo_owner:STRING,scan_mode:STRING,trigger_type:STRING,llm_model_used:STRING,vulnerabilities_found:INTEGER,fixes_applied:INTEGER,pr_number:INTEGER,pr_url:STRING,evidence_path:STRING,findings_summary:JSON,patches_summary:JSON
-
-# Verify table created
-bq show ${PROJECT_ID}:security_scans.scans
-```
-
-### Step 6.2: Create GCS Bucket for Evidence
-
-```bash
-# Create bucket (name must be globally unique)
-export BUCKET_NAME="security-patch-evidence-${PROJECT_ID}"
-gsutil mb -p $PROJECT_ID -c STANDARD -l $REGION gs://${BUCKET_NAME}/
-
-# Enable versioning
-gsutil versioning set on gs://${BUCKET_NAME}/
-
-# Set lifecycle policy (delete old evidence after 90 days)
-cat > /tmp/lifecycle.json <<EOF
-{
-  "lifecycle": {
-    "rule": [
-      {
-        "action": {"type": "Delete"},
-        "condition": {"age": 90}
-      }
-    ]
-  }
-}
-EOF
-gsutil lifecycle set /tmp/lifecycle.json gs://${BUCKET_NAME}/
-
-# Verify bucket
-gsutil ls -L gs://${BUCKET_NAME}/
-```
-
-### Step 6.3: Create Terraform State Bucket
-
-**IMPORTANT:** This bucket stores Terraform state and must be created BEFORE running any Terraform commands.
-
-```bash
-# Create Terraform state bucket (required for infrastructure deployment)
-gsutil mb -p $PROJECT_ID -l $REGION gs://security-patch-agent-gcp-terraform-state
-
-# Enable versioning (protects against accidental state corruption)
-gsutil versioning set on gs://security-patch-agent-gcp-terraform-state
-
-# Verify bucket created
-gsutil ls -b gs://security-patch-agent-gcp-terraform-state
-```
-
-**Why this bucket is needed:**
-- Stores Terraform state file
-- Enables team collaboration (shared state)
-- Prevents state conflicts in GitHub Actions
-- Required for `terraform init` to succeed
-
-**Note:** This is a one-time setup. The bucket persists across all deployments.
-
-### Step 6.3: Create Pub/Sub Topic & Subscription
-
-```bash
-# Create topic for scan events
-gcloud pubsub topics create scan-events \
-  --message-retention-duration=7d
-
-# Create subscription for workers
-gcloud pubsub subscriptions create scan-events-sub \
-  --topic=scan-events \
-  --ack-deadline=600 \
-  --message-retention-duration=7d \
-  --expiration-period=never
+echo -n "$WEBHOOK_SECRET" | gcloud secrets create github-webhook-secret \
+  --project=$PROJECT_ID \
+  --data-file=- \
+  --replication-policy="automatic"
 
 # Verify
-gcloud pubsub topics list
-gcloud pubsub subscriptions list
+gcloud secrets list --project=$PROJECT_ID
 ```
 
-### Step 6.4: Store Secrets in Secret Manager
+### 1.6 Create Terraform State Bucket
 
 ```bash
-# Store GitHub token
-echo -n $GITHUB_TOKEN | gcloud secrets create github-token \
-  --data-file=- \
-  --replication-policy="automatic"
+# Required before running pipeline
+gsutil mb -p $PROJECT_ID \
+  -c STANDARD \
+  -l us-central1 \
+  gs://${PROJECT_ID}-terraform-state
 
-# Store Gemini API key
-echo -n $GEMINI_API_KEY | gcloud secrets create gemini-api-key \
-  --data-file=- \
-  --replication-policy="automatic"
-
-# Store webhook secret
-echo -n $WEBHOOK_SECRET | gcloud secrets create webhook-secret \
-  --data-file=- \
-  --replication-policy="automatic"
-
-# Grant service account access to secrets
-for SECRET in github-token gemini-api-key webhook-secret; do
-  gcloud secrets add-iam-policy-binding $SECRET \
-    --member="serviceAccount:${SA_EMAIL}" \
-    --role="roles/secretmanager.secretAccessor"
-done
-
-# Verify secrets
-gcloud secrets list
+gsutil versioning set on gs://${PROJECT_ID}-terraform-state
 ```
+
+### 1.7 Set GitHub Repository Secrets
+
+Go to: **Your Fork** → **Settings** → **Secrets and variables** → **Actions**
+
+Add these 4 secrets:
+
+| Secret Name | Value | How to Get |
+|-------------|-------|------------|
+| `GCP_PROJECT_ID` | `security-patch-agent-gcp` | Your project ID |
+| `GCP_SERVICE_ACCOUNT_KEY` | `{...JSON...}` | Download from IAM → Service Accounts → Keys |
+| `API_KEY_PRIMARY` | `<hex string>` | `openssl rand -hex 32` |
+| `API_KEY_SECONDARY` | `<hex string>` | `openssl rand -hex 32` |
 
 ---
 
-## 7. GKE Cluster Creation
+## Part 2: Run GitHub Actions Pipeline
 
-### Step 7.1: Create GKE Cluster
+### 2.1 Trigger Deployment
 
-```bash
-# Create GKE cluster (this takes 5-10 minutes)
-gcloud container clusters create code-vulnerability-scanner \
-  --region=$REGION \
-  --num-nodes=2 \
-  --machine-type=e2-standard-4 \
-  --disk-size=50 \
-  --disk-type=pd-standard \
-  --enable-autoscaling \
-  --min-nodes=1 \
-  --max-nodes=5 \
-  --enable-autorepair \
-  --enable-autoupgrade \
-  --workload-pool=${PROJECT_ID}.svc.id.goog \
-  --enable-ip-alias \
-  --network=default \
-  --subnetwork=default \
-  --logging=SYSTEM,WORKLOAD \
-  --monitoring=SYSTEM \
-  --addons=HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver
+1. Go to your forked repository
+2. Click: **Actions** tab
+3. Select: **"Full Deployment"** workflow
+4. Click: **"Run workflow"**
+5. Configure options:
+   ```
+   ☑ Deploy infrastructure (Terraform)
+   ☑ Build and push Docker images
+   ☑ Deploy application to GKE
+   ```
+6. Click: **"Run workflow"**
 
-# Get cluster credentials
-gcloud container clusters get-credentials code-vulnerability-scanner --region=$REGION
+### 2.2 Monitor Pipeline
 
-# Verify cluster
-kubectl cluster-info
-kubectl get nodes
-```
+Watch the workflow run in GitHub Actions.
 
-Expected output:
-```
-NAME                                                  STATUS   ROLES    AGE   VERSION
-gke-code-vulnerability-scanner-default-pool-xxx       Ready    <none>   2m    v1.28.x
-gke-code-vulnerability-scanner-default-pool-yyy       Ready    <none>   2m    v1.28.x
-```
+**What it does:**
+1. **Terraform** (8 min)
+   - Creates GKE cluster
+   - Creates Pub/Sub topic + subscription + DLQ
+   - Creates BigQuery dataset + tables
+   - Creates GCS evidence bucket
+   - Configures IAM + Workload Identity
+   - Sets up monitoring dashboards
 
-### Step 7.2: Setup Workload Identity
+2. **Build & Push** (3 min)
+   - Builds Docker image
+   - Pushes to Artifact Registry
 
-```bash
-# Create Kubernetes namespace
-kubectl create namespace security-patch-agent
+3. **Deploy** (2 min)
+   - Deploys K8s manifests
+   - Creates ConfigMap (repositories)
+   - Creates Secret (API keys)
+   - Waits for pod readiness
 
-# Create Kubernetes service account
-kubectl create serviceaccount security-patch-agent-sa -n security-patch-agent
-
-# Bind Kubernetes SA to GCP SA (Workload Identity)
-gcloud iam service-accounts add-iam-policy-binding $SA_EMAIL \
-  --role roles/iam.workloadIdentityUser \
-  --member "serviceAccount:${PROJECT_ID}.svc.id.goog[security-patch-agent/security-patch-agent-sa]"
-
-# Annotate Kubernetes service account
-kubectl annotate serviceaccount security-patch-agent-sa \
-  -n security-patch-agent \
-  iam.gke.io/gcp-service-account=$SA_EMAIL
-
-# Verify
-kubectl get serviceaccount security-patch-agent-sa -n security-patch-agent -o yaml | grep iam.gke.io
-```
-
-### Step 7.3: Create RBAC Permissions
-
-```bash
-# Apply RBAC for Kubernetes Jobs
-kubectl apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: job-creator
-  namespace: security-patch-agent
-rules:
-- apiGroups: ["batch"]
-  resources: ["jobs"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["pods/log"]
-  verbs: ["get", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: job-creator-binding
-  namespace: security-patch-agent
-subjects:
-- kind: ServiceAccount
-  name: security-patch-agent-sa
-  namespace: security-patch-agent
-roleRef:
-  kind: Role
-  name: job-creator
-  apiGroup: rbac.authorization.k8s.io
-EOF
-
-# Verify RBAC
-kubectl get role,rolebinding -n security-patch-agent
-```
+**Total time:** ~15 minutes
 
 ---
 
-## 8. Build & Deploy Application
+## Part 3: Customize for Your Organization
 
-### Step 8.1: Create Artifact Registry
+**IMPORTANT:** The default deployment scans demo repositories. Update these for your team's repos.
 
-```bash
-# Create Docker repository
-gcloud artifacts repositories create security-patch-agent \
-  --repository-format=docker \
-  --location=$REGION \
-  --description="Docker images for Security Patch Agent"
+### 3.1 Update Repository Whitelist
 
-# Configure Docker authentication
-gcloud auth configure-docker ${REGION}-docker.pkg.dev
+The system uses a ConfigMap to control which repositories can be scanned (security control).
 
-# Verify repository
-gcloud artifacts repositories list --location=$REGION
-```
-
-### Step 8.2: Build Docker Image
-
-```bash
-# Navigate to app directory
-cd app/
-
-# Build image
-export IMAGE_TAG="${REGION}-docker.pkg.dev/${PROJECT_ID}/security-patch-agent/api:latest"
-docker build -t $IMAGE_TAG .
-
-# Verify image built
-docker images | grep security-patch-agent
-```
-
-### Step 8.3: Push to Artifact Registry
-
-```bash
-# Push image
-docker push $IMAGE_TAG
-
-# Verify push
-gcloud artifacts docker images list ${REGION}-docker.pkg.dev/${PROJECT_ID}/security-patch-agent
-```
-
-### Step 8.4: Deploy to GKE
-
-```bash
-# Go back to root directory
-cd ..
-
-# Update deployment manifests with your project details
-export SA_EMAIL="security-patch-agent@${PROJECT_ID}.iam.gserviceaccount.com"
-
-# Update service account annotation
-sed -i.bak "s/YOUR_PROJECT_ID/${PROJECT_ID}/g" deployment/k8s-manifests/02-serviceaccount.yaml
-
-# Apply all manifests
-kubectl apply -f deployment/k8s-manifests/01-namespace.yaml
-kubectl apply -f deployment/k8s-manifests/02-serviceaccount.yaml
-kubectl apply -f deployment/k8s-manifests/04-configmap.yaml
-
-# Update deployment with your image
-cat > deployment/k8s-manifests/05-deployment.yaml <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: security-patch-agent
-  namespace: security-patch-agent
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: security-patch-agent
-  template:
-    metadata:
-      labels:
-        app: security-patch-agent
-    spec:
-      serviceAccountName: security-patch-agent-sa
-      containers:
-      - name: api
-        image: ${IMAGE_TAG}
-        ports:
-        - containerPort: 8080
-        env:
-        - name: GCP_PROJECT_ID
-          value: "${PROJECT_ID}"
-        - name: GCP_REGION
-          value: "${REGION}"
-        - name: PUBSUB_TOPIC
-          value: "scan-events"
-        - name: BIGQUERY_DATASET
-          value: "security_scans"
-        - name: BIGQUERY_TABLE
-          value: "scans"
-        - name: GCS_BUCKET
-          value: "${BUCKET_NAME}"
-        - name: K8S_NAMESPACE
-          value: "security-patch-agent"
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "2000m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-EOF
-
-# Apply deployment
-kubectl apply -f deployment/k8s-manifests/05-deployment.yaml
-
-# Create service
-cat > deployment/k8s-manifests/06-service.yaml <<EOF
-apiVersion: v1
-kind: Service
-metadata:
-  name: security-patch-agent
-  namespace: security-patch-agent
-spec:
-  type: LoadBalancer
-  selector:
-    app: security-patch-agent
-  ports:
-  - port: 80
-    targetPort: 8080
-    protocol: TCP
-EOF
-
-kubectl apply -f deployment/k8s-manifests/06-service.yaml
-
-# Wait for deployment
-kubectl rollout status deployment/security-patch-agent -n security-patch-agent
-
-# Get pods
-kubectl get pods -n security-patch-agent
-```
-
-Expected output:
-```
-NAME                                    READY   STATUS    RESTARTS   AGE
-security-patch-agent-xxxxx-yyyyy        1/1     Running   0          2m
-security-patch-agent-xxxxx-zzzzz        1/1     Running   0          2m
-```
-
-### Step 8.5: Get External IP
-
-```bash
-# Wait for external IP (this may take 2-3 minutes)
-kubectl get service security-patch-agent -n security-patch-agent -w
-
-# Once EXTERNAL-IP appears (not <pending>), press Ctrl+C
-export API_URL=$(kubectl get service security-patch-agent -n security-patch-agent -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-
-echo "API URL: http://$API_URL"
-
-# Test health endpoint
-curl http://$API_URL/health
-```
-
-Expected response:
-```json
-{
-  "status": "healthy",
-  "service": "security-patch-agent",
-  "version": "1.0.0"
-}
-```
-
----
-
-## 9. Configure Secrets
-
-### Step 9.1: Create Kubernetes Secret for API Keys (Optional)
-
-```bash
-# Generate API keys for authenticating API requests
-export API_KEY_PRIMARY=$(openssl rand -hex 32)
-export API_KEY_SECONDARY=$(openssl rand -hex 32)
-
-# Create Kubernetes secret
-kubectl create secret generic security-patch-agent-api-keys \
-  --from-literal=api-keys="${API_KEY_PRIMARY},${API_KEY_SECONDARY}" \
-  -n security-patch-agent
-
-# Save API keys securely
-echo "Primary API Key: $API_KEY_PRIMARY" >> ~/security-patch-agent-keys.txt
-echo "Secondary API Key: $API_KEY_SECONDARY" >> ~/security-patch-agent-keys.txt
-echo "Webhook Secret: $WEBHOOK_SECRET" >> ~/security-patch-agent-keys.txt
-
-cat ~/security-patch-agent-keys.txt
-```
-
----
-
-## 10. Setup Monitoring
-
-### Step 10.1: Create Log-Based Metrics
-
-```bash
-# Run monitoring setup script
-chmod +x setup_monitoring.sh
-./setup_monitoring.sh
-```
-
-Or manually create metrics:
-
-```bash
-# Scan success metric
-gcloud logging metrics create scan_success \
-  --description="Count of successful vulnerability scans" \
-  --log-filter='resource.type="k8s_container"
-resource.labels.namespace_name="security-patch-agent"
-jsonPayload.message=~"Scan completed successfully"'
-
-# Scan failure metric
-gcloud logging metrics create scan_failures \
-  --description="Count of failed vulnerability scans" \
-  --log-filter='resource.type="k8s_container"
-resource.labels.namespace_name="security-patch-agent"
-severity="ERROR"
-jsonPayload.message=~"Scan failed"'
-
-# PRs created metric
-gcloud logging metrics create prs_created \
-  --description="Count of pull requests created" \
-  --log-filter='resource.type="k8s_container"
-resource.labels.namespace_name="security-patch-agent"
-jsonPayload.message=~"Created pull request"'
-
-# Verify metrics
-gcloud logging metrics list | grep -E "(scan_success|scan_failures|prs_created)"
-```
-
-### Step 10.2: Create Dashboards
-
-```bash
-# Open GCP Console
-echo "Open this URL to create dashboards:"
-echo "https://console.cloud.google.com/monitoring/dashboards?project=${PROJECT_ID}"
-
-# Dashboards are created automatically by setup_monitoring.sh
-# Or manually import from infrastructure/dashboards/
-```
-
-### Step 10.3: Create Alert Policies
-
-```bash
-# High scan failure rate alert
-gcloud alpha monitoring policies create \
-  --notification-channels=CHANNEL_ID \
-  --display-name="High Scan Failure Rate" \
-  --condition-display-name="Scan failures > 5 in 10 min" \
-  --condition-threshold-value=5 \
-  --condition-threshold-duration=600s \
-  --condition-filter='resource.type="k8s_container" AND metric.type="logging.googleapis.com/user/scan_failures"'
-
-echo "Setup email notification channels in GCP Console:"
-echo "https://console.cloud.google.com/monitoring/alerting/notifications?project=${PROJECT_ID}"
-```
-
----
-
-## 11. Testing the Deployment
-
-### Configuring Scannable Repositories
-
-**IMPORTANT:** The agent uses a static list of repositories defined in the `VULNERABLE_REPOS` ConfigMap environment variable.
-
-The list of scannable repositories is configured in `.github/workflows/deploy-application.yml` at line ~185:
-
+**Default repositories (demo only):**
 ```yaml
---from-literal=VULNERABLE_REPOS="https://github.com/kannavkunal/vulnerable-python-api,https://github.com/kannavkunal/vulnerable-node-service,https://github.com/kannavkunal/vulnerable-go-microservice,https://github.com/kannavkunal/vulnerable-java-app" \
+VULNERABLE_REPOS: |
+  https://github.com/kannavkunal/vulnerable-python-api
+  https://github.com/kannavkunal/vulnerable-node-service
+  https://github.com/kannavkunal/vulnerable-go-microservice
+  https://github.com/kannavkunal/vulnerable-java-app
 ```
 
-**To add or remove repositories:**
+**Update for your team:**
+
+**Option A: Via GitHub Actions (Recommended)**
 
 1. Edit `.github/workflows/deploy-application.yml`
-2. Update the `VULNERABLE_REPOS` value with comma-separated repository URLs
-3. Commit and push changes
-4. Re-run the deployment workflow or manually update the ConfigMap:
+2. Find the ConfigMap creation step (around line 175)
+3. Update `VULNERABLE_REPOS` with your repositories:
+
+```yaml
+--from-literal=VULNERABLE_REPOS="https://github.com/YOUR-ORG/repo1,https://github.com/YOUR-ORG/repo2,https://github.com/YOUR-ORG/repo3"
+```
+
+4. Commit and re-run the workflow
+
+**Option B: Via kubectl (Quick update)**
 
 ```bash
+# Update ConfigMap directly
 kubectl create configmap security-patch-agent-config \
-  --from-literal=VULNERABLE_REPOS="https://github.com/your-org/repo1,https://github.com/your-org/repo2" \
+  --from-literal=VULNERABLE_REPOS="https://github.com/YOUR-ORG/repo1,https://github.com/YOUR-ORG/repo2,https://github.com/YOUR-ORG/repo3" \
+  --from-literal=GCP_PROJECT_ID="$PROJECT_ID" \
   -n security-patch-agent \
   --dry-run=client -o yaml | kubectl apply -f -
 
-# Restart pods to pick up new configuration
+# Restart pods to pick up new config
+kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
+
+# Verify new config
+kubectl get configmap security-patch-agent-config -n security-patch-agent -o yaml
+```
+
+**Important notes:**
+- ✅ Only whitelisted repositories can be scanned (security feature)
+- ✅ Use comma-separated list (no spaces after commas)
+- ✅ Full URLs required (e.g., `https://github.com/org/repo`)
+- ❌ Private repos work (uses GitHub token from Secret Manager)
+
+### 3.2 Update API Keys (Optional)
+
+If you want to rotate API keys:
+
+```bash
+# Generate new keys
+NEW_KEY_1=$(openssl rand -hex 32)
+NEW_KEY_2=$(openssl rand -hex 32)
+
+# Update secret
+kubectl create secret generic security-patch-agent-api-keys \
+  --from-literal=api-keys="$NEW_KEY_1,$NEW_KEY_2" \
+  -n security-patch-agent \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Restart to pick up new keys
 kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
 ```
 
-**Why static configuration?**
-- Simpler than GitHub API discovery (no `repo` scope needed on token)
-- More secure (explicit whitelist, no accidental exposure)
-- Faster (no API calls)
-- Easier to audit and control
+### 3.3 Update GitHub Token (If Expired)
 
-To view the current list of scannable repositories:
-```bash
-curl http://$API_URL/repositories | jq .
-```
-
----
-
-### Step 11.1: Test Health Endpoint
+GitHub tokens expire after 90 days. To update:
 
 ```bash
-curl http://$API_URL/health | jq .
-```
+# Create new token at https://github.com/settings/tokens
+# Then update Secret Manager:
 
-Expected:
-```json
-{
-  "status": "healthy",
-  "service": "security-patch-agent",
-  "version": "1.0.0",
-  "timestamp": "2026-06-06T12:00:00Z"
-}
-```
-
-### Step 11.2: Test PATCH Mode (Full Repo Scan)
-
-```bash
-# Trigger scan on a test repository
-curl -X POST http://$API_URL/scan \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: $API_KEY_PRIMARY" \
-  -d '{
-    "repo_url": "https://github.com/kannavkunal/vulnerable-python-api",
-    "mode": "patch",
-    "branch": "main"
-  }' | jq .
-```
-
-Expected response:
-```json
-{
-  "scan_id": "scan-abc123def456",
-  "status": "queued",
-  "message": "Scan job created successfully",
-  "job_name": "scan-abc123"
-}
-```
-
-### Step 11.3: Monitor Scan Progress
-
-```bash
-# Get scan ID from previous response
-export SCAN_ID="scan-abc123def456"
-
-# Watch Kubernetes job
-kubectl get jobs -n security-patch-agent -w
-
-# View job logs
-export JOB_NAME=$(kubectl get jobs -n security-patch-agent --sort-by=.metadata.creationTimestamp -o name | tail -1 | cut -d/ -f2)
-kubectl logs -n security-patch-agent job/$JOB_NAME -f
-
-# Query scan status from API
-curl http://$API_URL/scans/$SCAN_ID | jq .
-```
-
-### Step 11.4: Verify Results
-
-```bash
-# Check BigQuery for scan data
-bq query --use_legacy_sql=false "
-SELECT 
-  scan_id,
-  repo_name,
-  scan_mode,
-  vulnerabilities_found,
-  fixes_applied,
-  pr_url
-FROM \`${PROJECT_ID}.security_scans.scans\`
-ORDER BY timestamp DESC
-LIMIT 5
-"
-
-# Check GCS for evidence files
-gsutil ls gs://${BUCKET_NAME}/
-
-# View PR created
-echo "Check GitHub PR: https://github.com/YOUR_USERNAME/vulnerable-python-api/pulls"
-```
-
-### Step 11.5: Run E2E Tests
-
-```bash
-# Run comprehensive test suite
-chmod +x test_e2e_complete.sh
-
-# Update API URL in script
-sed -i.bak "s|http://34.171.214.25|http://$API_URL|g" test_e2e_complete.sh
-
-# Run tests
-./test_e2e_complete.sh
-```
-
----
-
-## 12. Configure GitHub Webhooks (Optional)
-
-To enable automatic PR scanning (REVIEW mode), configure GitHub webhooks on your vulnerable test repositories.
-
-### Webhook Configuration Details
-
-**Payload URL:** `http://34.67.157.196/webhook/github`
-
-**Webhook Secret:** `47dca8eeae767c5f07f4967864feadcdcb34688f41022c2c8e7402662e474cd3`
-
-**Repositories to Configure:**
-1. https://github.com/kannavkunal/vulnerable-python-api
-2. https://github.com/kannavkunal/vulnerable-node-service
-3. https://github.com/kannavkunal/vulnerable-go-microservice
-4. https://github.com/kannavkunal/vulnerable-java-app
-
-### Step 12.1: Configure Webhook for Each Repository
-
-For **each** of the 4 vulnerable repositories above:
-
-1. Navigate to repository settings:
-   ```
-   https://github.com/kannavkunal/<REPO_NAME>/settings/hooks
-   ```
-
-2. Click **"Add webhook"**
-
-3. Configure webhook with these exact values:
-   - **Payload URL**: 
-     ```
-     http://34.67.157.196/webhook/github
-     ```
-   
-   - **Content type**: 
-     ```
-     application/json
-     ```
-   
-   - **Secret**: 
-     ```
-     47dca8eeae767c5f07f4967864feadcdcb34688f41022c2c8e7402662e474cd3
-     ```
-   
-   - **SSL verification**: 
-     ```
-     ☐ Disable (not required for HTTP endpoints)
-     ```
-   
-   - **Which events would you like to trigger this webhook?**:
-     ```
-     ⦿ Let me select individual events
-     
-     Events to select:
-     ☑ Pull requests
-     ☐ Pushes (uncheck this)
-     ☐ Everything else (uncheck)
-     ```
-   
-   - **Active**: 
-     ```
-     ☑ Active
-     ```
-
-4. Click **"Add webhook"**
-
-5. Verify the webhook:
-   - GitHub will send a ping event immediately
-   - Check the **"Recent Deliveries"** tab
-   - You should see a `ping` event with a green checkmark (✓)
-
-### Step 12.2: Test Webhook with a Pull Request
-
-Test one of the configured repositories:
-
-```bash
-# Clone a test repository
-git clone https://github.com/kannavkunal/vulnerable-python-api.git
-cd vulnerable-python-api
-
-# Create a test branch
-git checkout -b test-webhook-scan
-
-# Make a small change
-echo "# Webhook Test" >> README.md
-git add README.md
-git commit -m "Test: Verify webhook triggers scan"
-
-# Push the branch
-git push origin test-webhook-scan
-```
-
-Then:
-1. Open a Pull Request on GitHub
-2. Check webhook deliveries in GitHub Settings → Webhooks → Recent Deliveries
-3. You should see a `pull_request` event with status `200 OK`
-
-### Step 12.3: Monitor Scan Execution
-
-```bash
-# Monitor worker logs to see webhook events
-kubectl logs -n security-patch-agent -l app=security-patch-agent -c worker -f --insecure-skip-tls-verify
-```
-
-Expected output:
-```
-INFO:__main__:Webhook: Queueing review scan for https://github.com/kannavkunal/vulnerable-python-api PR#1
-INFO:__main__:Received scan request: {'scan_id': 'scan-...', 'mode': 'review', ...}
-```
-
-### Step 12.4: Verify PR Comment
-
-After the scan completes (2-5 minutes):
-1. Go to your Pull Request on GitHub
-2. You should see a comment from the bot with:
-   - Security findings
-   - Vulnerability details
-   - Recommendations
-   - Link to GCS evidence
-
-### Webhook Secret Management
-
-The webhook secret is stored in GCP Secret Manager:
-```bash
-# View current secret (first 10 chars)
-gcloud secrets versions access latest --secret=github-webhook-secret \
-  --project=security-patch-agent-gcp | cut -c1-10
-
-# Rotate secret if needed
-NEW_SECRET=$(openssl rand -hex 32)
-echo -n "$NEW_SECRET" | gcloud secrets versions add github-webhook-secret \
-  --project=security-patch-agent-gcp \
+echo -n "ghp_NEW_TOKEN" | gcloud secrets versions add github-token \
+  --project=$PROJECT_ID \
   --data-file=-
 
-# Update all GitHub webhooks with new secret
-# Then restart deployment
-kubectl rollout restart deployment/security-patch-agent \
-  -n security-patch-agent --insecure-skip-tls-verify
+# Restart pods
+kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
 ```
 
-### Troubleshooting Webhooks
+### 3.4 Common Customizations Per Team
 
-**Issue: Webhook shows "403 Forbidden"**
-```
-Cause: Repository not in VULNERABLE_REPOS whitelist
-Solution: Verify repository URL is configured in ConfigMap
-```
-
-**Issue: Webhook shows "401 Unauthorized"**
-```
-Cause: HMAC signature validation failed
-Solution: Verify webhook secret matches exactly in both GitHub and Secret Manager
-```
-
-**Issue: No scan triggered after PR**
-```
-1. Check webhook delivery status in GitHub
-2. Check worker logs for errors
-3. Verify Pub/Sub subscription is active
-```
-
-For detailed webhook setup documentation, see: [WEBHOOK_SETUP.md](./WEBHOOK_SETUP.md)
+| What to Change | Where | Why |
+|----------------|-------|-----|
+| **Repository list** | ConfigMap `VULNERABLE_REPOS` | Add your team's repos |
+| **API keys** | K8s Secret `security-patch-agent-api-keys` | Team-specific auth |
+| **GitHub token** | Secret Manager `github-token` | Use your org's token |
+| **Webhook secret** | Secret Manager `github-webhook-secret` | Team-specific HMAC |
+| **Scan frequency** | Webhook config | Per-PR vs manual |
 
 ---
 
-## 13. Troubleshooting
+## Part 4: Testing & Verification
 
-### Issue 1: Pods not starting
+### 4.1 Get Cluster Credentials
 
 ```bash
-# Check pod status
+gcloud container clusters get-credentials code-vulnerability-scanner \
+  --region=us-central1 \
+  --project=$PROJECT_ID
+```
+
+### 4.2 Check Deployment Status
+
+```bash
+# Check pods (should show 2/2 Running)
 kubectl get pods -n security-patch-agent
 
-# Describe pod for errors
-kubectl describe pod -n security-patch-agent <POD_NAME>
-
-# Check logs
-kubectl logs -n security-patch-agent <POD_NAME>
-
-# Common issues:
-# - Image pull errors: Verify Artifact Registry permissions
-# - CrashLoopBackOff: Check application logs for errors
-# - Pending: Check node resources (kubectl describe node)
+# Expected:
+NAME                                   READY   STATUS    RESTARTS   AGE
+security-patch-agent-8c8547d8f-xxxxx   2/2     Running   0          5m
 ```
 
-### Issue 2: Cannot access API via LoadBalancer
+### 4.3 Get External IP
 
 ```bash
-# Verify service
+kubectl get svc security-patch-agent -n security-patch-agent
+
+# Copy EXTERNAL-IP (may take 2-3 min to provision)
+export API_IP=<EXTERNAL_IP>
+```
+
+### 4.4 Test API
+
+```bash
+# Health check
+curl http://$API_IP/health
+# Expected: {"status":"healthy"}
+
+# List repositories
+curl http://$API_IP/repositories
+# Expected: {"count":4,"repositories":[...]}
+```
+
+### 4.5 Open Web UI
+
+```
+http://<EXTERNAL_IP>/
+```
+
+**You should see:** Security Patch Agent web interface
+
+### 4.6 Test PATCH Mode (Manual Scan)
+
+**Via Web UI:**
+1. Enter API key (from GitHub secret)
+2. Select repository from dropdown
+3. Select mode: **PATCH**
+4. Click **"Start Scan"**
+
+**Via API:**
+```bash
+# Get API key
+API_KEY=$(kubectl get secret security-patch-agent-api-keys \
+  -n security-patch-agent \
+  -o jsonpath='{.data.api-keys}' | base64 -d | cut -d',' -f1)
+
+# Trigger scan
+curl -X POST http://$API_IP/scan \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{
+    "repo_url": "https://github.com/YOUR-ORG/vulnerable-repo",
+    "mode": "patch",
+    "branch": "main"
+  }'
+
+# Response: {"scan_id":"scan-...","status":"queued"}
+```
+
+**Monitor scan:**
+```bash
+# Watch worker process message
+kubectl logs -n security-patch-agent -l app=security-patch-agent -c worker -f
+
+# Watch scan job
+kubectl get jobs -n security-patch-agent --watch
+```
+
+**Expected flow:**
+```
+1. API receives request → publishes to Pub/Sub
+2. Worker picks up message → creates K8s Job
+3. Job executes 8 phases:
+   - Phase 1: Analyzes repository (language detection)
+   - Phase 2: Detects vulnerabilities (Semgrep/Bandit)
+   - Phase 3: Plans remediation (Gemini with past context)
+   - Phase 4: Generates patches (Gemini)
+   - Phase 5: Verification (stub)
+   - Phase 6: Creates GitHub PR with fixes
+   - Phase 7: Logs to BigQuery
+   - Phase 8: Generates security evidence
+4. PR appears on GitHub with fixes
+5. Scan results in BigQuery
+```
+
+### 4.7 Test REVIEW Mode (Webhook on PR)
+
+**Configure webhook:**
+
+1. Go to: `https://github.com/YOUR-ORG/YOUR-REPO/settings/hooks`
+2. Click: **"Add webhook"**
+3. Configure:
+   - **Payload URL:** `http://<EXTERNAL_IP>/webhook/github`
+   - **Content type:** `application/json`
+   - **Secret:** `<WEBHOOK_SECRET from step 1.5>`
+   - **Events:** ☑ Pull requests only
+   - ☑ Active
+4. **Add webhook**
+
+**Test webhook:**
+```bash
+# Create test PR
+cd your-repo
+git checkout -b test-webhook
+echo "test" >> README.md
+git commit -am "test webhook"
+git push origin test-webhook
+# Create PR via GitHub UI
+```
+
+**Expected:**
+- Webhook triggers scan in REVIEW mode
+- Bot posts security comment on PR
+- Worker logs show: `Webhook: Queueing review scan for <repo> PR#<num>`
+
+### 4.8 Verify BigQuery Logs
+
+```bash
+# View recent scans
+bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
+  "SELECT scan_id, repo_name, scan_mode, status, vulnerabilities_found, pr_number 
+   FROM security_scans.scans 
+   ORDER BY timestamp DESC 
+   LIMIT 5"
+```
+
+### 4.9 Access Cloud Console
+
+**GKE Workloads:**
+```
+https://console.cloud.google.com/kubernetes/workload?project=$PROJECT_ID
+```
+
+**BigQuery:**
+```
+https://console.cloud.google.com/bigquery?project=$PROJECT_ID&d=security_scans
+```
+
+**Cloud Logging:**
+```
+https://console.cloud.google.com/logs/query?project=$PROJECT_ID
+# Filter: resource.type="k8s_pod" resource.labels.namespace_name="security-patch-agent"
+```
+
+**Monitoring Dashboards:**
+```
+https://console.cloud.google.com/monitoring/dashboards?project=$PROJECT_ID
+```
+
+---
+
+## Useful Commands
+
+### View Logs
+
+```bash
+# API container logs
+kubectl logs -n security-patch-agent -l app=security-patch-agent -c api
+
+# Worker container logs  
+kubectl logs -n security-patch-agent -l app=security-patch-agent -c worker
+
+# Scan job logs
+kubectl logs -n security-patch-agent job/scan-<ID>
+```
+
+### List Resources
+
+```bash
+# All pods
+kubectl get pods -n security-patch-agent
+
+# All jobs (completed scans)
+kubectl get jobs -n security-patch-agent
+
+# Services
 kubectl get svc -n security-patch-agent
 
-# Check firewall rules
-gcloud compute firewall-rules list | grep default-allow
-
-# Create firewall rule if needed
-gcloud compute firewall-rules create allow-lb-health-checks \
-  --network=default \
-  --action=allow \
-  --direction=ingress \
-  --source-ranges=0.0.0.0/0 \
-  --rules=tcp:8080
-
-# Use port-forward as temporary workaround
-kubectl port-forward -n security-patch-agent svc/security-patch-agent 8080:80
-curl http://localhost:8080/health
+# ConfigMaps
+kubectl get configmap -n security-patch-agent
 ```
 
-### Issue 3: Scans failing with "Permission denied"
+### Query Data
 
 ```bash
-# Verify Workload Identity binding
-gcloud iam service-accounts get-iam-policy $SA_EMAIL
+# Recent scans
+curl -H "X-API-Key: $API_KEY" http://$API_IP/scans?limit=10 | jq .
 
-# Re-bind if needed
-gcloud iam service-accounts add-iam-policy-binding $SA_EMAIL \
-  --role roles/iam.workloadIdentityUser \
-  --member "serviceAccount:${PROJECT_ID}.svc.id.goog[security-patch-agent/security-patch-agent-sa]"
+# Specific scan
+curl -H "X-API-Key: $API_KEY" http://$API_IP/scans/<SCAN_ID> | jq .
 
-# Verify secret access
-gcloud secrets get-iam-policy github-token
+# BigQuery
+bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
+  "SELECT * FROM security_scans.scans WHERE scan_mode='patch' ORDER BY timestamp DESC"
 ```
 
-### Issue 4: Jobs not creating
+---
 
+## Troubleshooting
+
+### Pipeline fails at Terraform
+
+**Error:** State bucket not found
+
+**Fix:**
 ```bash
-# Check RBAC permissions
-kubectl auth can-i create jobs --as=system:serviceaccount:security-patch-agent:security-patch-agent-sa -n security-patch-agent
-
-# Should return "yes" - if not, reapply RBAC:
-kubectl apply -f deployment/k8s-manifests/02-serviceaccount.yaml
+# Create state bucket (step 1.6)
+gsutil mb gs://${PROJECT_ID}-terraform-state
 ```
 
-### Issue 5: No data in BigQuery
+### Pod stuck in Pending
 
 ```bash
-# Check if table exists
-bq show ${PROJECT_ID}:security_scans.scans
+kubectl describe pod <POD_NAME> -n security-patch-agent
 
-# Verify service account has BigQuery permissions
-gcloud projects get-iam-policy $PROJECT_ID \
-  --flatten="bindings[].members" \
-  --filter="bindings.members:serviceAccount:${SA_EMAIL}" | grep bigquery
-
-# Check application logs for BigQuery errors
-kubectl logs -n security-patch-agent -l app=security-patch-agent | grep -i bigquery
+# Common causes:
+# - Insufficient quota
+# - Workload Identity misconfigured
+# - Image pull error
 ```
 
-### Issue 6: Gemini API errors
+### Worker can't access Pub/Sub
 
 ```bash
-# Verify API key in Secret Manager
-gcloud secrets versions access latest --secret=gemini-api-key
+# Check Workload Identity
+kubectl get sa security-patch-agent -n security-patch-agent -o yaml \
+  | grep "iam.gserviceaccount.com/email"
 
-# Check quota limits
-gcloud alpha services quota list --service=aiplatform.googleapis.com
+# Should show: security-patch-agent@PROJECT_ID.iam.gserviceaccount.com
+```
 
-# Test Gemini API directly
-curl -H "Content-Type: application/json" \
-  -d '{"contents":[{"parts":[{"text":"Hello"}]}]}' \
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent?key=$GEMINI_API_KEY"
+### Webhook returns 401 Unauthorized
+
+**Issue:** HMAC signature mismatch
+
+**Fix:**
+```bash
+# Verify webhook secret matches
+gcloud secrets versions access latest --secret=github-webhook-secret
+
+# Update GitHub webhook with exact value
 ```
 
 ---
 
 ## 🎉 Installation Complete!
 
-Your Security Patch Agent is now fully deployed and operational!
+### What You Have
 
-### Quick Reference
+- ✅ **GKE Autopilot cluster** - Auto-scaling K8s
+- ✅ **Event-driven architecture** - Pub/Sub + Jobs
+- ✅ **LLM integration** - Gemini 2.5 Pro (Workload Identity)
+- ✅ **Audit logging** - BigQuery
+- ✅ **Monitoring** - Cloud Monitoring dashboards
+- ✅ **Web UI + API** - http://<EXTERNAL_IP>
 
-**API Endpoint**: `http://$API_URL`
+### Cost Estimate
 
-**Trigger PATCH scan**:
+~$750/month for 200 scans:
+- GKE Autopilot: $500
+- Vertex AI (Gemini): $200
+- BigQuery + Storage + Pub/Sub: $50
+
+### Next Steps
+
+1. Add your repositories to whitelist (update ConfigMap)
+2. Configure webhooks for automated PR scans
+3. Review scan results in BigQuery
+4. Customize monitoring dashboards
+
+---
+
+## Quick Reference
+
+**API Endpoint:** `http://<EXTERNAL_IP>`  
+**Web UI:** `http://<EXTERNAL_IP>/`  
+**Health:** `http://<EXTERNAL_IP>/health`
+
+**Secret Manager:**
+- `github-token` - GitHub PAT
+- `github-webhook-secret` - HMAC for webhooks
+
+**GitHub Actions Secrets:**
+- `GCP_PROJECT_ID`
+- `GCP_SERVICE_ACCOUNT_KEY`
+- `API_KEY_PRIMARY`
+- `API_KEY_SECONDARY`
+
+**kubectl Context:**
 ```bash
-curl -X POST http://$API_URL/scan \
-  -H "Content-Type: application/json" \
-  -d '{"repo_url": "https://github.com/user/repo", "mode": "patch", "branch": "main"}'
-```
-
-**Query scans**:
-```bash
-curl http://$API_URL/scans?limit=10 | jq .
-```
-
-**View dashboards**:
-- https://console.cloud.google.com/monitoring/dashboards?project=$PROJECT_ID
-
-**Check logs**:
-```bash
-kubectl logs -n security-patch-agent -l app=security-patch-agent -f
+kubectl config use-context gke_${PROJECT_ID}_us-central1_code-vulnerability-scanner
 ```
 
 ---
 
-## 📚 Next Steps
-
-1. **Configure GitHub webhooks** for automatic PR scanning
-2. **Setup monitoring alerts** for Slack/Email notifications
-3. **Create custom Semgrep rules** for your organization
-4. **Review PRD.md** for feature roadmap
-5. **Read TESTING_GUIDE.md** for comprehensive testing procedures
-
----
-
-## 🆘 Support
-
-- **Documentation**: See README.md, PRD.md, TESTING_GUIDE.md
-- **Issues**: https://github.com/kannavkunal/security-patch-agent/issues
-- **Email**: kannavkunal@gmail.com
-
-**Built for Tessera 2026** | **Powered by Google Gemini 2.5 Pro**
+**Support:** kannavkunal@gmail.com  
+**Live Demo:** http://34.67.157.196/  
+**Documentation:** [ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE_DIAGRAM.md)

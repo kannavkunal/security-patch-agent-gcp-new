@@ -15,7 +15,7 @@ Go to your GitHub repository → **Settings** → **Secrets and variables** → 
 | Secret Name | Current Value | New Value (Example) |
 |------------|---------------|---------------------|
 | `GCP_PROJECT_ID` | `YOUR_PROJECT_ID` | `your-new-project-id` |
-| `GCP_SA_KEY` | (current service account key) | (new project's SA key) |
+| `GCP_SERVICE_ACCOUNT_KEY` | (current service account key) | (new project's SA key) |
 
 **That's it!** All workflows will now use the new project.
 
@@ -71,7 +71,7 @@ When you change `GCP_PROJECT_ID` secret, these workflows automatically use the n
 
 4. **Update GitHub Secrets:**
    - `GCP_PROJECT_ID`: `YOUR-NEW-PROJECT-ID`
-   - `GCP_SA_KEY`: Contents of `key.json` file
+   - `GCP_SERVICE_ACCOUNT_KEY`: Contents of `key.json` file
 
 ---
 
@@ -281,7 +281,7 @@ gcloud secrets versions access latest \
 ## 🎯 Summary: Switching Projects
 
 **For GitHub Actions users (simplest):**
-1. Update `GCP_PROJECT_ID` and `GCP_SA_KEY` in GitHub Secrets
+1. Update `GCP_PROJECT_ID` and `GCP_SERVICE_ACCOUNT_KEY` in GitHub Secrets
 2. Run "Full Deployment" workflow
 3. Done! (~15 minutes)
 

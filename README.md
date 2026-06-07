@@ -27,6 +27,8 @@ Automated security patch agent that:
 | Document | Description |
 |----------|-------------|
 | [**Installation Guide**](INSTALLATION.md) | Complete setup instructions (15 min) |
+| [**System Architecture**](docs/SYSTEM_ARCHITECTURE_DIAGRAM.md) | Complete architecture diagram with all components |
+| [**Architecture Deep Dive**](docs/ARCHITECTURE.md) | System design & data flow details |
 | [**Switch Project Guide**](SWITCH_PROJECT_GUIDE.md) | Deploy to different GCP projects |
 | [**PRD**](submission-files/PRD.md) | Product requirements & architecture |
 | [**Design Notes**](submission-files/DESIGN_NOTES.md) | Technical decisions & limitations |
@@ -43,7 +45,7 @@ Go to your repo → **Settings** → **Secrets and variables** → **Actions**:
 
 ```
 GCP_PROJECT_ID: your-gcp-project-id
-GCP_SA_KEY: <service-account-json-key>
+GCP_SERVICE_ACCOUNT_KEY: <service-account-json-key>
 API_KEY_PRIMARY: <openssl rand -hex 32>
 API_KEY_SECONDARY: <openssl rand -hex 32>
 ```
