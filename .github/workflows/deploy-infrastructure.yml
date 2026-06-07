@@ -54,7 +54,7 @@ jobs:
 
     - name: Create Terraform State Bucket
       run: |
-        BUCKET_NAME="${PROJECT_ID}-terraform-state"
+        BUCKET_NAME="security-patch-agent-gcp-terraform-state"
 
         echo "Checking if state bucket exists: gs://${BUCKET_NAME}"
 
@@ -75,13 +75,7 @@ jobs:
     - name: Terraform Init
       run: |
         cd infrastructure/terraform
-
-        # Create backend config file with dynamic bucket name
-        cat > backend.tfvars <<EOF
-bucket = "${PROJECT_ID}-terraform-state"
-EOF
-
-        terraform init -backend-config=backend.tfvars
+        terraform init
 
     - name: Terraform Validate
       run: |
