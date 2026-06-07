@@ -218,13 +218,26 @@ jobs:
           local resource=$1
           local id=$2
 
-          # Try to import, suppress all errors
-          terraform import \
+          # Try to import and capture output
+          output=$(terraform import \
             -var="project_id=$PROJECT_ID" \
             -var="region=$GKE_REGION" \
-            "$resource" "$id" 2>&1 | grep -q "Import successful\|already being managed" && \
-            echo "✅ $resource" || \
-            echo "⏭️  $resource (skipped - may not exist or already imported)"
+            "$resource" "$id" 2>&1)
+
+          # Check if successful or already managed
+          if echo "$output" | grep -qi "import successful\|already.* managed"; then
+            echo "✅ $resource"
+            return 0
+          elif echo "$output" | grep -qi "error.*409\|already exists"; then
+            echo "⚠️  $resource (already exists - will skip creation)"
+            return 0
+          elif echo "$output" | grep -qi "cannot import.*does not exist\|not found"; then
+            echo "⏭️  $resource (doesn't exist yet - will create)"
+            return 0
+          else
+            echo "⏭️  $resource (skipped)"
+            return 0
+          fi
         }
 
         # Import GKE cluster (if deploying infrastructure)
