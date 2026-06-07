@@ -370,6 +370,7 @@ jobs:
           --from-literal=ALLOWED_REPO_PATTERN="vulnerable-*" \
           --from-literal=EXCLUDED_REPOS="" \
           --from-literal=REPO_CACHE_TTL="300" \
+          --from-literal=VULNERABLE_REPOS="https://github.com/kannavkunal/vulnerable-python-api,https://github.com/kannavkunal/vulnerable-node-service,https://github.com/kannavkunal/vulnerable-go-microservice,https://github.com/kannavkunal/vulnerable-java-app" \
           -n $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
