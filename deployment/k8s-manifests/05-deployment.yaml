@@ -1,3 +1,13 @@
+# NOTE: This file is a REFERENCE TEMPLATE ONLY
+# The actual deployment is managed by GitHub Actions workflows which:
+# 1. Build Docker images with the correct project ID
+# 2. Create ConfigMap dynamically from GitHub Secrets
+# 3. Update image tags during deployment
+#
+# These placeholder values are replaced during deployment.
+# See: .github/workflows/full-deployment.yml
+# See: .github/workflows/deploy-application.yml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,7 +29,7 @@ spec:
       containers:
       # Container 1: FastAPI server
       - name: api
-        image: us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest
+        image: us-central1-docker.pkg.dev/PROJECT_ID_PLACEHOLDER/security-patch-agent/api:latest
         imagePullPolicy: Always
         command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
         ports:
@@ -56,7 +66,7 @@ spec:
 
       # Container 2: Pub/Sub worker
       - name: worker
-        image: us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest
+        image: us-central1-docker.pkg.dev/PROJECT_ID_PLACEHOLDER/security-patch-agent/api:latest
         imagePullPolicy: Always
         command: ["python", "-m", "app.worker"]
         envFrom:
@@ -64,7 +74,7 @@ spec:
             name: security-patch-agent-config
         env:
         - name: SCANNER_IMAGE
-          value: "us-central1-docker.pkg.dev/compact-orb-498606-f9/security-patch-agent/api:latest"
+          value: "us-central1-docker.pkg.dev/PROJECT_ID_PLACEHOLDER/security-patch-agent/api:latest"
         resources:
           requests:
             cpu: 250m

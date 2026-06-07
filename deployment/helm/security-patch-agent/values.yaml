@@ -7,7 +7,7 @@ replicaCount: 2
 
 # Project configuration
 project:
-  id: "compact-orb-498606-f9"  # Override with --set project.id=your-project
+  id: "your-project-id"  # Set via --set project.id=YOUR_PROJECT_ID  # Override with --set project.id=your-project
   region: "us-central1"
 
 image:

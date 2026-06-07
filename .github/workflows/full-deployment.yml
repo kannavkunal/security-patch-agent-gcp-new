@@ -239,7 +239,7 @@ jobs:
       run: |
         echo "## Infrastructure Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
         echo "- Components: ${{ github.event.inputs.infrastructure_components }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Terraform state: gs://compact-orb-498606-f9-terraform-state/security-patch-agent/" >> $GITHUB_STEP_SUMMARY
+        echo "- Terraform state: Remote state disabled (using local)/security-patch-agent/" >> $GITHUB_STEP_SUMMARY
 
   # Step 4: Build and Push Docker Image
   build-and-push:

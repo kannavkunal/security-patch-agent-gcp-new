@@ -22,7 +22,7 @@ on:
           - monitoring-only
 
 env:
-  PROJECT_ID: compact-orb-498606-f9
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GKE_CLUSTER: code-vulnerability-scanner
   GKE_REGION: us-central1
 
