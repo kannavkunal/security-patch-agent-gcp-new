@@ -353,9 +353,11 @@ jobs:
       run: |
         IMAGE_TAG="${{ github.event.inputs.environment }}-${{ github.sha }}"
 
-        # Apply namespace and service account first
+        # Apply namespace first
         kubectl apply -f deployment/k8s-manifests/01-namespace.yaml
-        kubectl apply -f deployment/k8s-manifests/02-serviceaccount.yaml
+
+        # Apply service account with PROJECT_ID replaced
+        sed "s/PROJECT_ID_PLACEHOLDER/$PROJECT_ID/g" deployment/k8s-manifests/02-serviceaccount.yaml | kubectl apply -f -
 
         # Create/update ConfigMap from GitHub Secrets (NOT from static file)
         kubectl create configmap security-patch-agent-config \
@@ -377,9 +379,11 @@ jobs:
           -n $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
-        # Apply remaining manifests (deployment, service)
-        kubectl apply -f deployment/k8s-manifests/05-deployment.yaml
+        # Apply service first
         kubectl apply -f deployment/k8s-manifests/06-service.yaml
+
+        # Apply deployment with PROJECT_ID replaced (image tags will be updated next)
+        sed "s/PROJECT_ID_PLACEHOLDER/$PROJECT_ID/g" deployment/k8s-manifests/05-deployment.yaml | kubectl apply -f -
 
         # Update images for both containers
         kubectl set image deployment/security-patch-agent \
