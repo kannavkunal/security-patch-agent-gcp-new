@@ -205,27 +205,56 @@ jobs:
     - name: Terraform Init
       run: |
         cd infrastructure/terraform
-        terraform init
+        terraform init -reconfigure
 
-    - name: Import existing secrets (if they exist)
+    - name: Import Existing Resources
       run: |
         cd infrastructure/terraform
 
-        # Import github-token if it exists and not in state
-        terraform import \
-          -var="project_id=$PROJECT_ID" \
-          -var="region=$GKE_REGION" \
-          google_secret_manager_secret.github_token \
-          projects/$PROJECT_ID/secrets/github-token 2>/dev/null || \
-          echo "Secret github-token already in state or doesn't exist"
+        echo "🔄 Importing existing resources into Terraform state..."
 
-        # Import webhook secret if it exists and not in state
-        terraform import \
-          -var="project_id=$PROJECT_ID" \
-          -var="region=$GKE_REGION" \
-          google_secret_manager_secret.github_webhook_secret \
-          projects/$PROJECT_ID/secrets/github-webhook-secret 2>/dev/null || \
-          echo "Secret github-webhook-secret already in state or doesn't exist"
+        # Function to import with error handling
+        import_if_exists() {
+          local resource=$1
+          local id=$2
+          if terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" "$resource" "$id" 2>&1 | grep -q "already managed\|Successfully imported"; then
+            echo "✅ $resource imported or already managed"
+          else
+            echo "⚠️  $resource not found or already in state"
+          fi
+        }
+
+        # Import core infrastructure
+        import_if_exists "google_storage_bucket.evidence_bucket" "security-patch-evidence-$PROJECT_ID"
+        import_if_exists "google_compute_network.vpc[0]" "projects/$PROJECT_ID/global/networks/code-vulnerability-scanner-vpc"
+        import_if_exists "google_compute_subnetwork.subnet[0]" "projects/$PROJECT_ID/regions/$GKE_REGION/subnetworks/code-vulnerability-scanner-subnet"
+        import_if_exists "google_service_account.app_sa[0]" "projects/$PROJECT_ID/serviceAccounts/security-patch-agent@$PROJECT_ID.iam.gserviceaccount.com"
+        import_if_exists "google_artifact_registry_repository.docker_repo[0]" "projects/$PROJECT_ID/locations/$GKE_REGION/repositories/security-patch-agent"
+
+        # Import Pub/Sub
+        import_if_exists "google_pubsub_topic.security_scan_events" "projects/$PROJECT_ID/topics/security-scan-events"
+        import_if_exists "google_pubsub_topic.dead_letter" "projects/$PROJECT_ID/topics/security-scan-events-dlq"
+        import_if_exists "google_pubsub_subscription.security_scan_events_sub" "projects/$PROJECT_ID/subscriptions/scan-events-subscription"
+
+        # Import BigQuery
+        import_if_exists "google_bigquery_dataset.security_scans" "projects/$PROJECT_ID/datasets/security_scans"
+        import_if_exists "google_bigquery_table.scans" "projects/$PROJECT_ID/datasets/security_scans/tables/scans"
+        import_if_exists "google_bigquery_table.vulnerabilities" "projects/$PROJECT_ID/datasets/security_scans/tables/vulnerabilities"
+        import_if_exists "google_bigquery_table.patches" "projects/$PROJECT_ID/datasets/security_scans/tables/patches"
+        import_if_exists "google_bigquery_table.scan_outcomes" "projects/$PROJECT_ID/datasets/security_scans/tables/scan_outcomes"
+
+        # Import logging metrics
+        import_if_exists "google_logging_metric.scan_completed" "projects/$PROJECT_ID/metrics/security_patch_agent_scans_completed"
+        import_if_exists "google_logging_metric.scan_failed" "projects/$PROJECT_ID/metrics/security_patch_agent_scans_failed"
+        import_if_exists "google_logging_metric.pr_created" "projects/$PROJECT_ID/metrics/security_patch_agent_prs_created"
+        import_if_exists "google_logging_metric.evidence_generated" "projects/$PROJECT_ID/metrics/security_patch_agent_evidence_generated"
+        import_if_exists "google_logging_metric.api_requests" "projects/$PROJECT_ID/metrics/security_patch_agent_api_requests"
+
+        # Import secrets
+        import_if_exists "google_secret_manager_secret.github_token" "projects/$PROJECT_ID/secrets/github-token"
+        import_if_exists "google_secret_manager_secret.github_webhook_secret" "projects/$PROJECT_ID/secrets/github-webhook-secret"
+
+        echo "✅ Import complete!"
 
     - name: Terraform Plan
       run: |
