@@ -67,52 +67,74 @@ jobs:
       run: |
         cd infrastructure/terraform
 
-        echo "Importing existing resources (ignore errors if not found)..."
+        echo "========================================="
+        echo "Importing existing resources into state"
+        echo "========================================="
+
+        # GKE Cluster (import first - other resources may depend on it)
+        echo "1. GKE Cluster..."
+        terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
+          'google_container_cluster.primary[0]' "projects/$PROJECT_ID/locations/$GKE_REGION/clusters/code-vulnerability-scanner" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → Skipped (not found or already imported)"
 
         # VPC Network
+        echo "2. VPC Network..."
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_compute_network.vpc[0]' "projects/$PROJECT_ID/global/networks/code-vulnerability-scanner-vpc" 2>/dev/null || echo "✓ VPC not imported"
+          'google_compute_network.vpc[0]' "projects/$PROJECT_ID/global/networks/code-vulnerability-scanner-vpc" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → Skipped (not found or already imported)"
+
+        # Subnet
+        echo "3. Subnet..."
+        terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
+          'google_compute_subnetwork.subnet[0]' "projects/$PROJECT_ID/regions/$GKE_REGION/subnetworks/code-vulnerability-scanner-subnet" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → Skipped (not found or already imported)"
 
         # Service Account
+        echo "4. Service Account..."
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_service_account.app_sa[0]' "projects/$PROJECT_ID/serviceAccounts/security-patch-agent@$PROJECT_ID.iam.gserviceaccount.com" 2>/dev/null || echo "✓ Service account not imported"
+          'google_service_account.app_sa[0]' "projects/$PROJECT_ID/serviceAccounts/security-patch-agent@$PROJECT_ID.iam.gserviceaccount.com" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → Skipped (not found or already imported)"
 
         # GCS Bucket
+        echo "5. GCS Bucket..."
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_storage_bucket.evidence_bucket' "security-patch-evidence-$PROJECT_ID" 2>/dev/null || echo "✓ GCS bucket not imported"
+          'google_storage_bucket.evidence_bucket' "security-patch-evidence-$PROJECT_ID" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → Skipped"
 
         # Artifact Registry
+        echo "6. Artifact Registry..."
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_artifact_registry_repository.docker_repo[0]' "projects/$PROJECT_ID/locations/$GKE_REGION/repositories/security-patch-agent" 2>/dev/null || echo "✓ Artifact Registry not imported"
+          'google_artifact_registry_repository.docker_repo[0]' "projects/$PROJECT_ID/locations/$GKE_REGION/repositories/security-patch-agent" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → Skipped"
 
         # Logging Metrics
+        echo "7. Logging Metrics..."
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_logging_metric.scan_completed' "$PROJECT_ID/security_patch_agent_scans_completed" 2>/dev/null || echo "✓ Metric scan_completed not imported"
+          'google_logging_metric.scan_completed' "$PROJECT_ID/security_patch_agent_scans_completed" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → scan_completed skipped"
 
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_logging_metric.scan_failed' "$PROJECT_ID/security_patch_agent_scans_failed" 2>/dev/null || echo "✓ Metric scan_failed not imported"
+          'google_logging_metric.scan_failed' "$PROJECT_ID/security_patch_agent_scans_failed" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → scan_failed skipped"
 
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_logging_metric.pr_created' "$PROJECT_ID/security_patch_agent_prs_created" 2>/dev/null || echo "✓ Metric pr_created not imported"
+          'google_logging_metric.pr_created' "$PROJECT_ID/security_patch_agent_prs_created" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → pr_created skipped"
 
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_logging_metric.evidence_generated' "$PROJECT_ID/security_patch_agent_evidence_generated" 2>/dev/null || echo "✓ Metric evidence_generated not imported"
+          'google_logging_metric.evidence_generated' "$PROJECT_ID/security_patch_agent_evidence_generated" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → evidence_generated skipped"
 
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_logging_metric.api_requests' "$PROJECT_ID/security_patch_agent_api_requests" 2>/dev/null || echo "✓ Metric api_requests not imported"
+          'google_logging_metric.api_requests' "$PROJECT_ID/security_patch_agent_api_requests" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → api_requests skipped"
 
         # Pub/Sub Topics
+        echo "8. Pub/Sub Topics..."
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_pubsub_topic.security_scan_events' "projects/$PROJECT_ID/topics/security-scan-events" 2>/dev/null || echo "✓ Pub/Sub topic security-scan-events not imported"
+          'google_pubsub_topic.security_scan_events' "projects/$PROJECT_ID/topics/security-scan-events" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → security-scan-events skipped"
 
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_pubsub_topic.dead_letter' "projects/$PROJECT_ID/topics/security-scan-events-dlq" 2>/dev/null || echo "✓ Pub/Sub topic dead_letter not imported"
+          'google_pubsub_topic.dead_letter' "projects/$PROJECT_ID/topics/security-scan-events-dlq" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → dead_letter skipped"
 
         # Pub/Sub Subscription
+        echo "9. Pub/Sub Subscription..."
         terraform import -var="project_id=$PROJECT_ID" -var="region=$GKE_REGION" -var="components=${{ github.event.inputs.components }}" \
-          'google_pubsub_subscription.dead_letter_sub' "projects/$PROJECT_ID/subscriptions/scan-events-dlq-subscription" 2>/dev/null || echo "✓ Pub/Sub subscription not imported"
+          'google_pubsub_subscription.dead_letter_sub' "projects/$PROJECT_ID/subscriptions/scan-events-dlq-subscription" 2>&1 | grep -i "import prepared\|already\|error 404\|error 400" || echo "  → Skipped"
 
-        echo "Import step complete!"
+        echo ""
+        echo "========================================="
+        echo "Import complete! Ready for terraform apply"
+        echo "========================================="
 
     - name: Terraform Plan
       if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
