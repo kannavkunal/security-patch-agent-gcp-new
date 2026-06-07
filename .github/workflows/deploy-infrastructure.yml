@@ -75,7 +75,7 @@ jobs:
     - name: Terraform Init
       run: |
         cd infrastructure/terraform
-        terraform init -backend-config="bucket=${PROJECT_ID}-terraform-state"
+        terraform init
 
     - name: Terraform Validate
       run: |
