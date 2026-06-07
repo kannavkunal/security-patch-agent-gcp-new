@@ -532,7 +532,8 @@ resource "google_monitoring_alert_policy" "high_scan_failure_rate" {
   combiner     = "OR"
 
   depends_on = [
-    google_logging_metric.scan_failed
+    google_logging_metric.scan_failed,
+    time_sleep.wait_for_metrics,  # Wait for metric propagation
   ]
 
   conditions {
@@ -569,7 +570,8 @@ resource "google_monitoring_alert_policy" "api_error_rate" {
   combiner     = "OR"
 
   depends_on = [
-    google_logging_metric.api_requests
+    google_logging_metric.api_requests,
+    time_sleep.wait_for_metrics,  # Wait for metric propagation
   ]
 
   conditions {
