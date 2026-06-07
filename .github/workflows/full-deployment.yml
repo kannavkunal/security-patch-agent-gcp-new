@@ -212,12 +212,18 @@ jobs:
         cd infrastructure/terraform
 
         # Import github-token if it exists and not in state
-        terraform import google_secret_manager_secret.github_token \
+        terraform import \
+          -var="project_id=$PROJECT_ID" \
+          -var="region=$GKE_REGION" \
+          google_secret_manager_secret.github_token \
           projects/$PROJECT_ID/secrets/github-token 2>/dev/null || \
           echo "Secret github-token already in state or doesn't exist"
 
         # Import webhook secret if it exists and not in state
-        terraform import google_secret_manager_secret.github_webhook_secret \
+        terraform import \
+          -var="project_id=$PROJECT_ID" \
+          -var="region=$GKE_REGION" \
+          google_secret_manager_secret.github_webhook_secret \
           projects/$PROJECT_ID/secrets/github-webhook-secret 2>/dev/null || \
           echo "Secret github-webhook-secret already in state or doesn't exist"
 
