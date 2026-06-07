@@ -73,6 +73,27 @@ terraform import -var="project_id=$PROJECT_ID" -var="region=$REGION" \
   "projects/$PROJECT_ID/topics/security-scan-events-dlq" 2>/dev/null || \
   echo "  ⏭️  Topic not found or already in state"
 
+# Import Pub/Sub Subscription if exists
+echo "5. Pub/Sub Subscription..."
+terraform import -var="project_id=$PROJECT_ID" -var="region=$REGION" \
+  'google_pubsub_subscription.dead_letter_sub' \
+  "projects/$PROJECT_ID/subscriptions/scan-events-dlq-subscription" 2>/dev/null || \
+  echo "  ⏭️  Subscription not found or already in state"
+
+# Import GCS Bucket if exists
+echo "6. GCS Bucket..."
+terraform import -var="project_id=$PROJECT_ID" -var="region=$REGION" \
+  'google_storage_bucket.evidence_bucket' \
+  "security-patch-evidence-$PROJECT_ID" 2>/dev/null || \
+  echo "  ⏭️  Bucket not found or already in state"
+
+# Import Artifact Registry if exists
+echo "7. Artifact Registry..."
+terraform import -var="project_id=$PROJECT_ID" -var="region=$REGION" \
+  'google_artifact_registry_repository.docker_repo[0]' \
+  "projects/$PROJECT_ID/locations/$REGION/repositories/security-patch-agent" 2>/dev/null || \
+  echo "  ⏭️  Repository not found or already in state"
+
 echo ""
 echo "================================================"
 echo "Import Complete!"
