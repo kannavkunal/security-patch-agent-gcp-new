@@ -207,6 +207,23 @@ jobs:
         cd infrastructure/terraform
         terraform init -reconfigure
 
+    - name: Remove GKE Resources from State (monitoring-only mode)
+      if: github.event.inputs.infrastructure_components == 'monitoring-only'
+      run: |
+        cd infrastructure/terraform
+
+        echo "🗑️  Removing GKE resources from Terraform state..."
+        echo "These resources exist in GCP but shouldn't be managed by monitoring-only mode"
+        echo ""
+
+        # Remove GKE cluster, VPC, and subnet from state (don't delete actual resources)
+        terraform state rm 'google_container_cluster.primary[0]' 2>/dev/null || echo "  GKE cluster not in state"
+        terraform state rm 'google_compute_network.vpc[0]' 2>/dev/null || echo "  VPC not in state"
+        terraform state rm 'google_compute_subnetwork.subnet[0]' 2>/dev/null || echo "  Subnet not in state"
+
+        echo ""
+        echo "✅ GKE resources removed from state (actual resources preserved)"
+
     - name: Skip Import (Use Monitoring-Only Mode Instead)
       run: |
         echo "⚠️  IMPORTANT: If resources already exist, use 'monitoring-only' mode"
