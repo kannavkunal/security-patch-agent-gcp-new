@@ -13,7 +13,8 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "security-patch-agent-gcp-terraform-state"
+    # Bucket name passed via -backend-config during init
+    # Format: {PROJECT_ID}-terraform-state
     prefix = "security-patch-agent"
   }
 }
