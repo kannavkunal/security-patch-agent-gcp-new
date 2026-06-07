@@ -54,17 +54,17 @@ variable "whitelisted_ips" {
 variable "use_existing_cluster" {
   description = "Use existing GKE cluster instead of creating new one"
   type        = bool
-  default     = false
+  default     = true  # Changed: GKE already exists
 }
 
 variable "use_existing_registry" {
   description = "Use existing Artifact Registry instead of creating new one"
   type        = bool
-  default     = false
+  default     = true  # Changed: Artifact Registry already exists
 }
 
 variable "use_existing_service_account" {
   description = "Use existing service account instead of creating new one"
   type        = bool
-  default     = false
+  default     = true  # Changed: Service account already exists
 }
