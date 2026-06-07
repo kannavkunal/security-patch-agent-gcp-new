@@ -128,57 +128,24 @@ Operation "operations/acf.p2-YOUR_PROJECT_NUMBER-..." finished successfully.
 4. Select scopes:
    - ☑ **repo** (Full control of private repositories)
 5. Click **"Generate token"**
-6. **Copy the token** (starts with `ghp_...`)
+6. **Copy and save the token** (starts with `ghp_...`) - you'll need it after deployment
 
-**Note**: This token must have access to the repositories you want to scan (configured in Step 13).
-
----
-
-## Step 8: Store GitHub Token in Secret Manager
-
-```bash
-# Replace with your actual token
-echo -n "ghp_YOUR_ACTUAL_TOKEN" | gcloud secrets create github-token \
-  --project=security-patch-agent-gcp-new \
-  --data-file=- \
-  --replication-policy="automatic"
-```
-
-**Example** (DO NOT use this token - it's just an example):
-```bash
-echo -n "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" | gcloud secrets create github-token \
-  --project=security-patch-agent-gcp-new \
-  --data-file=- \
-  --replication-policy="automatic"
-```
-
-**Expected output**:
-```
-Created version [1] of the secret [github-token].
-```
+**Note**: This token must have access to the repositories you want to scan.
 
 ---
 
-## Step 9: Create GitHub Webhook Secret
+## Step 8: Generate Webhook Secret
 
 ```bash
 # Generate a random webhook secret
 WEBHOOK_SECRET=$(openssl rand -hex 32)
-echo "Save this webhook secret: $WEBHOOK_SECRET"
+echo "Webhook secret: $WEBHOOK_SECRET"
 echo $WEBHOOK_SECRET > webhook-secret.txt
-
-# Store in Secret Manager
-echo -n "$WEBHOOK_SECRET" | gcloud secrets create github-webhook-secret \
-  --project=security-patch-agent-gcp-new \
-  --data-file=- \
-  --replication-policy="automatic"
 ```
 
-**Actual output**:
-```
-Save this webhook secret: xxxxx-REDACTED-WEBHOOK-SECRET-xxxxx
-Created version [1] of the secret [github-webhook-secret].
-```
+**Save this value** - you'll need it:
+1. After deployment to populate Secret Manager
+2. When configuring GitHub webhooks
 
 ✅ **Webhook secret saved to**: `webhook-secret.txt`
 
@@ -311,13 +278,228 @@ Add these 4 secrets:
 
 ---
 
-## Step 15: [CONTINUE FROM HERE]
+## Step 15: Run GitHub Actions Deployment
 
-**Next steps to complete:**
+1. Go to your GitHub repository: https://github.com/YOUR-USERNAME/security-patch-agent-gcp-new
+2. Click **"Actions"** tab
+3. Click **"Full Deployment"** workflow (left sidebar)
+4. Click **"Run workflow"** button (top right)
+5. Keep all defaults checked:
+   - ☑ Deploy infrastructure (Terraform)
+   - ☑ Build and push Docker images
+   - ☑ Deploy application to GKE
+6. Click **"Run workflow"**
 
-1. Commit and push code changes to GitHub
-2. Run GitHub Actions deployment workflow
-3. Test the deployment
+**Wait ~15-20 minutes** for deployment to complete. Watch for all green checkmarks ✅.
+
+---
+
+## Step 16: Populate Secret Manager Values
+
+**IMPORTANT:** After the workflow completes successfully, Terraform creates **empty secret containers**. You must populate them with actual values:
+
+```bash
+# Set project
+export PROJECT_ID=security-patch-agent-gcp-new
+
+# 1. Add GitHub Token (from Step 7)
+# Replace ghp_YOUR_TOKEN with your actual GitHub token
+echo -n "ghp_YOUR_ACTUAL_GITHUB_TOKEN" | gcloud secrets versions add github-token \
+  --project=$PROJECT_ID \
+  --data-file=-
+
+# 2. Add Webhook Secret (from Step 8 or webhook-secret.txt file)
+cat webhook-secret.txt | gcloud secrets versions add github-webhook-secret \
+  --project=$PROJECT_ID \
+  --data-file=-
+
+# 3. Verify secrets are populated
+gcloud secrets versions access latest --secret=github-token --project=$PROJECT_ID
+gcloud secrets versions access latest --secret=github-webhook-secret --project=$PROJECT_ID
+```
+
+**Expected output:**
+```
+Created version [1] of the secret [github-token].
+Created version [1] of the secret [github-webhook-secret].
+```
+
+✅ **Secrets are now ready to use**
+
+---
+
+## Step 17: Get LoadBalancer IP
+
+After the GitHub Actions workflow completes, the **LoadBalancer External IP** will be displayed in the workflow output:
+
+1. Go to **Actions** → **Full Deployment** → Latest run
+2. Expand **Step 5: Deploy Application**
+3. Look for the output showing the LoadBalancer IP:
+   ```
+   External IP: XX.XX.XX.XX
+   ```
+4. Copy this IP address
+
+**Or retrieve it manually:**
+
+```bash
+# Activate service account
+gcloud auth activate-service-account --key-file=/path/to/downloads/security-patch-agent-gcp-new-xxxxx.json
+
+# Get cluster credentials
+gcloud container clusters get-credentials code-vulnerability-scanner \
+  --region=us-central1 \
+  --project=security-patch-agent-gcp-new
+
+# Get LoadBalancer IP
+kubectl get svc security-patch-agent -n security-patch-agent --insecure-skip-tls-verify
+
+# Copy the EXTERNAL-IP from the output
+export API_IP=<paste-external-ip-here>
+```
+
+---
+
+## Step 18: Verify Deployment
+
+```bash
+# Activate service account (if not already active)
+gcloud auth activate-service-account --key-file=/path/to/downloads/security-patch-agent-gcp-new-xxxxx.json
+
+# Set project
+gcloud config set project security-patch-agent-gcp-new
+
+# Get cluster credentials
+gcloud container clusters get-credentials code-vulnerability-scanner \
+  --region=us-central1 \
+  --project=security-patch-agent-gcp-new
+
+# Check pods are running (should show 1 pod with 2/2 READY)
+kubectl get pods -n security-patch-agent --insecure-skip-tls-verify
+
+# Expected output:
+# NAME                                    READY   STATUS    RESTARTS   AGE
+# security-patch-agent-xxxxxxxxxx-xxxxx   2/2     Running   0          5m
+
+# Check deployment (should show 1/1 replicas)
+kubectl get deployment security-patch-agent -n security-patch-agent --insecure-skip-tls-verify
+
+# Expected output:
+# NAME                   READY   UP-TO-DATE   AVAILABLE   AGE
+# security-patch-agent   1/1     1            1           7m
+
+# Get service details
+kubectl get svc security-patch-agent -n security-patch-agent --insecure-skip-tls-verify
+
+# Test the API (use the EXTERNAL-IP from above)
+curl http://$API_IP/health
+# Expected: {"status":"healthy","model":"gemini-2.5-pro"}
+
+# List repositories
+curl http://$API_IP/repositories
+# Expected: {"count":4,"repositories":[...]}
+```
+
+**Understanding the output:**
+- **2/2 READY**: 2 containers (API + Worker) running in 1 pod
+- **1/1 replicas**: 1 pod total (as configured)
+- If you see a second pod in "Terminating" status, that's normal - it's a rolling update cleanup
+
+---
+
+## Step 19: Configure GitHub Webhooks (REVIEW Mode)
+
+⚠️ **Optional but Recommended**: This enables automatic PR scanning - whenever a PR is opened or updated, the system automatically scans it and posts security findings as PR comments.
+
+**Webhook Configuration Details** (same for all repositories):
+
+- **Payload URL**: `http://<EXTERNAL_IP>/webhook/github` (replace with your LoadBalancer IP from Step 17)
+- **Content type**: `application/json`
+- **Secret**: Use the webhook secret from Step 8 (`webhook-secret.txt` or retrieve from Secret Manager)
+- **Events**: Select "Pull requests" only
+- **Active**: ✅ Yes
+
+**Retrieve webhook secret** (if needed):
+
+```bash
+# Get the webhook secret from Secret Manager
+gcloud secrets versions access latest \
+  --secret=github-webhook-secret \
+  --project=security-patch-agent-gcp-new
+```
+
+---
+
+### Configure Webhooks for All 4 Repositories
+
+The following repositories are configured in `VULNERABLE_REPOS` and need webhooks:
+
+#### Repository 1: vulnerable-python-api
+
+1. Go to: [https://github.com/kannavkunal/vulnerable-python-api/settings/hooks/new](https://github.com/kannavkunal/vulnerable-python-api/settings/hooks/new)
+2. Fill in:
+   - **Payload URL**: `http://<EXTERNAL_IP>/webhook/github`
+   - **Content type**: `application/json`
+   - **Secret**: `<paste-webhook-secret-from-step-8>`
+   - **Which events**: ○ Let me select individual events → ☑ Pull requests
+   - ☑ **Active**
+3. Click **"Add webhook"**
+
+#### Repository 2: vulnerable-node-service
+
+1. Go to: [https://github.com/kannavkunal/vulnerable-node-service/settings/hooks/new](https://github.com/kannavkunal/vulnerable-node-service/settings/hooks/new)
+2. Use the same configuration as above
+3. Click **"Add webhook"**
+
+#### Repository 3: vulnerable-go-microservice
+
+1. Go to: [https://github.com/kannavkunal/vulnerable-go-microservice/settings/hooks/new](https://github.com/kannavkunal/vulnerable-go-microservice/settings/hooks/new)
+2. Use the same configuration as above
+3. Click **"Add webhook"**
+
+#### Repository 4: vulnerable-java-app
+
+1. Go to: [https://github.com/kannavkunal/vulnerable-java-app/settings/hooks/new](https://github.com/kannavkunal/vulnerable-java-app/settings/hooks/new)
+2. Use the same configuration as above
+3. Click **"Add webhook"**
+
+---
+
+### Verify Webhooks
+
+After creating all webhooks, verify they're active:
+
+1. Go to each repository's webhook settings page (e.g., `https://github.com/USER/REPO/settings/hooks`)
+2. Look for a green checkmark ✅ next to each webhook
+3. Click on the webhook to see recent deliveries
+
+**Test it**: Create a test PR in one of the repositories to trigger REVIEW mode!
+
+---
+
+### What Happens When a PR is Created/Updated?
+
+1. GitHub sends a webhook event to `http://<EXTERNAL_IP>/webhook/github`
+2. The API validates the HMAC signature using the webhook secret
+3. The system scans the PR branch
+4. It compares vulnerabilities against the base branch
+5. Only **NEW** vulnerabilities (not in base) are reported
+6. A comment is posted on the PR with findings
+
+**Note**: The GitHub token in Secret Manager (from Step 16) must have write access to these repositories to post PR comments.
+
+---
+
+## 🎉 Installation Complete!
+
+Your Security Patch Agent is now deployed and ready!
+
+**Access Points:**
+- **Web UI**: `http://<EXTERNAL_IP>/`
+- **API**: `http://<EXTERNAL_IP>`
+- **Health Check**: `http://<EXTERNAL_IP>/health`
+
+**Next Steps:** See testing commands in the Commands Reference section below.
 
 ---
 
@@ -373,10 +555,12 @@ gcloud services list --enabled --project=security-patch-agent-gcp-new
 
 ---
 
-## Secrets Created
+## Secrets To Be Created
 
-- [x] `github-token` - GitHub Personal Access Token
-- [x] `github-webhook-secret` - HMAC secret for GitHub webhooks (saved in `webhook-secret.txt`)
+- [ ] `github-token` - Created by Terraform (empty), populated in Step 16
+- [ ] `github-webhook-secret` - Created by Terraform (empty), populated in Step 16
+- [x] GitHub token generated and saved (Step 7)
+- [x] Webhook secret generated and saved to `webhook-secret.txt` (Step 8)
 
 ## Resources Created
 
@@ -398,13 +582,14 @@ gcloud services list --enabled --project=security-patch-agent-gcp-new
 ## Pending
 
 - [ ] (Optional) Update VULNERABLE_REPOS in `.github/workflows/full-deployment.yml` for your own repositories
-- [ ] Commit and push changes to GitHub
-- [ ] Run GitHub Actions deployment workflow
-- [ ] Test the deployment
+- [ ] Commit and push changes to GitHub (if any)
+- [ ] Run GitHub Actions deployment workflow (Step 15)
+- [ ] Populate Secret Manager values (Step 16)
+- [ ] Verify deployment (Step 17)
 
 ---
 
-**Status**: In Progress - Completed Steps 1-14
+**Status**: Ready for Deployment - Steps 1-14 Complete, Steps 15-17 Documented
 
 ---
 
