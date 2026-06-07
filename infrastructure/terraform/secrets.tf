@@ -59,6 +59,8 @@ resource "google_secret_manager_secret_iam_member" "github_token_access" {
   secret_id = google_secret_manager_secret.github_token.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${var.project_id}.svc.id.goog[${var.namespace}/${var.k8s_service_account}]"
+
+  depends_on = [google_container_cluster.primary]
 }
 
 # IAM: Grant GCP Service Account access (for Kubernetes Jobs)
@@ -77,6 +79,8 @@ resource "google_secret_manager_secret_iam_member" "webhook_secret_access" {
   secret_id = google_secret_manager_secret.github_webhook_secret.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${var.project_id}.svc.id.goog[${var.namespace}/${var.k8s_service_account}]"
+
+  depends_on = [google_container_cluster.primary]
 }
 
 # IAM: Grant GCP Service Account access to webhook secret

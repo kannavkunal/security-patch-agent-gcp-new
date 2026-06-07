@@ -176,6 +176,8 @@ resource "google_service_account_iam_member" "workload_identity_binding" {
   service_account_id = google_service_account.app_sa[0].name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[${var.namespace}/${var.k8s_service_account}]"
+
+  depends_on = [google_container_cluster.primary]
 }
 
 # Cloud Monitoring Notification Channel
