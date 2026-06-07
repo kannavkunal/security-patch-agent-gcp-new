@@ -405,3 +405,80 @@ gcloud services list --enabled --project=security-patch-agent-gcp-new
 ---
 
 **Status**: In Progress - Completed Steps 1-14
+
+---
+
+## 🧹 Cleanup Guide
+
+When you want to delete all resources and stop incurring costs:
+
+### Option 1: GitHub Actions Cleanup (Recommended)
+
+1. Go to **Actions** → **"Cleanup - Destroy All Resources"**
+2. Click **"Run workflow"**
+3. Type **"DESTROY"** to confirm
+4. Click **"Run workflow"**
+
+**This will delete:**
+- ✅ GKE cluster
+- ✅ Pub/Sub resources
+- ✅ BigQuery dataset
+- ✅ GCS evidence bucket
+- ✅ Secret Manager secrets
+- ✅ Artifact Registry repository
+- ✅ Terraform-created service account
+- ✅ Monitoring dashboards & alerts
+
+**Cost after this**: ~$0.10/month (just the Terraform state bucket)
+
+---
+
+### Option 2: Complete Manual Cleanup (100% Clean)
+
+After running the GitHub Actions cleanup, delete these manually created resources:
+
+```bash
+# 1. Delete Terraform state bucket (created in Step 10)
+gsutil rm -r gs://security-patch-agent-gcp-new-terraform-state
+
+# 2. Delete manual service account (created in Step 3)
+gcloud iam service-accounts delete github-gcp@security-patch-agent-gcp-new.iam.gserviceaccount.com \
+  --project=security-patch-agent-gcp-new
+
+# 3. Delete service account key file (downloaded in Step 4)
+rm /path/to/downloads/security-patch-agent-gcp-new-xxxxx.json
+
+# 4. Delete GitHub Secrets
+# Go to GitHub repo → Settings → Secrets → Delete all 4 secrets
+
+# 5. (Nuclear option) Delete entire GCP project
+gcloud projects delete security-patch-agent-gcp-new
+```
+
+**Cost after complete cleanup**: $0/month
+
+---
+
+### Quick Cleanup Commands
+
+```bash
+# Set project ID
+export PROJECT_ID=security-patch-agent-gcp-new
+
+# Delete state bucket
+gsutil rm -r gs://${PROJECT_ID}-terraform-state
+
+# Delete manual service account
+gcloud iam service-accounts delete github-gcp@${PROJECT_ID}.iam.gserviceaccount.com \
+  --project=$PROJECT_ID --quiet
+
+# Verify everything is deleted
+gcloud container clusters list --project=$PROJECT_ID
+gcloud pubsub topics list --project=$PROJECT_ID
+bq ls -d --project_id=$PROJECT_ID
+gsutil ls -p $PROJECT_ID
+```
+
+---
+
+**Status**: Installation guide complete
