@@ -114,7 +114,25 @@ gsutil mb -p $PROJECT_ID \
 gsutil versioning set on gs://${PROJECT_ID}-terraform-state
 ```
 
-### 1.7 Set GitHub Repository Secrets
+### 1.7 Update Terraform Backend (If using different project)
+
+**IMPORTANT:** The Terraform backend is hardcoded to `security-patch-agent-gcp-terraform-state`.
+
+If your project ID is different, update `infrastructure/terraform/main.tf` line 16:
+
+```bash
+# Example: Change to your project ID
+cd infrastructure/terraform
+sed -i '' 's/security-patch-agent-gcp-terraform-state/YOUR-PROJECT-ID-terraform-state/' main.tf
+
+# Or edit manually in main.tf:
+# backend "gcs" {
+#   bucket = "YOUR-PROJECT-ID-terraform-state"  # ← Update this line
+#   prefix = "security-patch-agent"
+# }
+```
+
+### 1.8 Set GitHub Repository Secrets
 
 Go to: **Your Fork** → **Settings** → **Secrets and variables** → **Actions**
 
