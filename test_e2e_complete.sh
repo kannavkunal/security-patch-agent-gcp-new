@@ -110,9 +110,15 @@ else
 fi
 echo ""
 
-echo "Test 3.2: GET / (root)"
-echo "----------------------"
-curl -s "$API_URL/" | jq .
+echo "Test 3.2: GET / (root - Web UI)"
+echo "--------------------------------"
+ROOT_RESPONSE=$(curl -s "$API_URL/")
+if echo "$ROOT_RESPONSE" | grep -q "<!DOCTYPE html>"; then
+  echo "✓ Web UI loaded successfully (HTML returned)"
+else
+  echo "⚠ Unexpected response format"
+  echo "$ROOT_RESPONSE" | head -3
+fi
 echo ""
 
 echo "Test 3.3: GET /repositories"
