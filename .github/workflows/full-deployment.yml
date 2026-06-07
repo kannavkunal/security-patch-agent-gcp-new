@@ -7,16 +7,16 @@ on:
         description: 'Deploy infrastructure (Terraform)'
         required: true
         type: boolean
-        default: false
+        default: true
       infrastructure_components:
         description: 'Infrastructure components (if enabled)'
         required: false
         type: choice
         options:
-          - monitoring-only
           - all
           - gke-only
-        default: 'monitoring-only'
+          - monitoring-only
+        default: 'all'
       deploy_application:
         description: 'Deploy application'
         required: true
