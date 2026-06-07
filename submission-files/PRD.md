@@ -539,5 +539,5 @@ gs://security-patch-evidence-{project}/
 
 **Prepared for:** Tessera 2026 Innovation Challenge  
 **Contact:** kannavkunal@gmail.com  
-**Demo:** https://github.com/kannavkunal/security-patch-agent  
-**Live System:** http://34.171.214.25
+**Demo:** https://github.com/kannavkunal/security-patch-agent-gcp-new  
+**Live System:** http://34.60.187.202

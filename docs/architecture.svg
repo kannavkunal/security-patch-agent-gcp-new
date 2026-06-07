@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900">
+  <defs>
+    <style>
+      .title { font-family: 'Google Sans', Arial, sans-serif; font-size: 24px; font-weight: 700; fill: #202124; }
+      .subtitle { font-family: 'Google Sans', Arial, sans-serif; font-size: 14px; font-weight: 500; fill: #5f6368; }
+      .label { font-family: 'Google Sans', Arial, sans-serif; font-size: 13px; font-weight: 500; fill: #202124; }
+      .small-label { font-family: 'Google Sans', Arial, sans-serif; font-size: 11px; fill: #5f6368; }
+      .component-text { font-family: 'Google Sans', Arial, sans-serif; font-size: 12px; font-weight: 500; fill: #ffffff; text-anchor: middle; }
+      .future-text { font-family: 'Google Sans', Arial, sans-serif; font-size: 10px; fill: #ea4335; font-style: italic; }
+
+      .gcp-boundary { fill: #f1f3f4; stroke: #dadce0; stroke-width: 2; stroke-dasharray: 5,5; }
+      .gke-boundary { fill: #e8f0fe; stroke: #1a73e8; stroke-width: 2; }
+      .pod { fill: #1a73e8; stroke: #174ea6; stroke-width: 1.5; rx: 4; }
+      .job { fill: #34a853; stroke: #188038; stroke-width: 1.5; rx: 4; }
+      .data { fill: #fbbc04; stroke: #f29900; stroke-width: 1.5; rx: 4; }
+      .external { fill: #ea4335; stroke: #c5221f; stroke-width: 1.5; rx: 4; }
+      .edge { fill: #9aa0a6; stroke: #5f6368; stroke-width: 1.5; rx: 4; }
+      .actor { fill: #ffffff; stroke: #dadce0; stroke-width: 2; rx: 8; }
+
+      .arrow { fill: none; stroke: #5f6368; stroke-width: 2; marker-end: url(#arrowhead); }
+      .arrow-primary { fill: none; stroke: #1a73e8; stroke-width: 2.5; marker-end: url(#arrowhead-primary); }
+      .arrow-data { fill: none; stroke: #fbbc04; stroke-width: 2; marker-end: url(#arrowhead-data); stroke-dasharray: 4,4; }
+    </style>
+
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#5f6368" />
+    </marker>
+    <marker id="arrowhead-primary" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a73e8" />
+    </marker>
+    <marker id="arrowhead-data" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#fbbc04" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="35" class="title" text-anchor="middle">Security Patch Agent - Production Architecture</text>
+  <text x="700" y="55" class="subtitle" text-anchor="middle">Event-Driven AI Vulnerability Remediation Platform (GKE Autopilot)</text>
+
+  <!-- GCP Project Boundary -->
+  <rect x="180" y="90" width="1050" height="780" class="gcp-boundary" />
+  <text x="195" y="110" class="label">GCP Project: security-patch-agent-gcp-new</text>
+
+  <!-- External Actors -->
+  <rect x="20" y="200" width="130" height="60" class="actor" />
+  <text x="85" y="225" class="label" text-anchor="middle">Developers</text>
+  <text x="85" y="242" class="small-label" text-anchor="middle">Web UI / API</text>
+
+  <rect x="20" y="320" width="130" height="60" class="actor" />
+  <text x="85" y="345" class="label" text-anchor="middle">GitHub</text>
+  <text x="85" y="362" class="small-label" text-anchor="middle">Webhook Events</text>
+
+  <rect x="20" y="440" width="130" height="60" class="actor" />
+  <text x="85" y="465" class="label" text-anchor="middle">Security Teams</text>
+  <text x="85" y="482" class="small-label" text-anchor="middle">Audit / Review</text>
+
+  <!-- Edge Layer -->
+  <rect x="200" y="280" width="150" height="100" class="edge" />
+  <text x="275" y="320" class="component-text">LoadBalancer</text>
+  <text x="275" y="337" class="small-label" text-anchor="middle" fill="#ffffff">34.60.187.202</text>
+  <text x="275" y="360" class="future-text" text-anchor="middle">Future: Istio Ingress</text>
+
+  <!-- GKE Cluster Boundary -->
+  <rect x="390" y="130" width="480" height="600" class="gke-boundary" />
+  <text x="405" y="155" class="label">GKE Autopilot Cluster (us-central1)</text>
+
+  <!-- API Pod -->
+  <rect x="420" y="180" width="140" height="100" class="pod" />
+  <text x="490" y="220" class="component-text">API Pod</text>
+  <text x="490" y="237" class="small-label" text-anchor="middle" fill="#ffffff">FastAPI</text>
+  <text x="490" y="252" class="small-label" text-anchor="middle" fill="#ffffff">Uvicorn</text>
+  <text x="490" y="267" class="small-label" text-anchor="middle" fill="#ffffff">Port 8080</text>
+
+  <!-- Worker Pod -->
+  <rect x="420" y="320" width="140" height="100" class="pod" />
+  <text x="490" y="360" class="component-text">Worker Pod</text>
+  <text x="490" y="377" class="small-label" text-anchor="middle" fill="#ffffff">Pub/Sub Consumer</text>
+  <text x="490" y="392" class="small-label" text-anchor="middle" fill="#ffffff">Job Spawner</text>
+
+  <!-- Scanner Jobs -->
+  <rect x="420" y="460" width="140" height="100" class="job" />
+  <text x="490" y="500" class="component-text">Scanner Jobs</text>
+  <text x="490" y="517" class="small-label" text-anchor="middle" fill="#ffffff">8-Phase Orchestrator</text>
+  <text x="490" y="532" class="small-label" text-anchor="middle" fill="#ffffff">Ephemeral Pods</text>
+  <text x="490" y="547" class="small-label" text-anchor="middle" fill="#ffffff">Auto-cleanup</text>
+
+  <!-- Future: Redis Cache -->
+  <rect x="420" y="600" width="140" height="70" class="pod" opacity="0.4" stroke-dasharray="5,5" />
+  <text x="490" y="630" class="component-text">Redis Cache</text>
+  <text x="490" y="647" class="small-label" text-anchor="middle" fill="#ffffff">Scan Results</text>
+  <text x="490" y="662" class="future-text" text-anchor="middle">Future (Phase 1.5)</text>
+
+  <!-- Future: Istio Service Mesh -->
+  <rect x="600" y="180" width="240" height="490" fill="none" stroke="#ea4335" stroke-width="2" stroke-dasharray="8,4" rx="8" />
+  <text x="720" y="205" class="future-text" text-anchor="middle">Istio Service Mesh (mTLS)</text>
+
+  <!-- Data Layer -->
+  <rect x="920" y="180" width="140" height="70" class="data" />
+  <text x="990" y="210" class="component-text">BigQuery</text>
+  <text x="990" y="227" class="small-label" text-anchor="middle" fill="#ffffff">Analytics DB</text>
+  <text x="990" y="242" class="small-label" text-anchor="middle" fill="#ffffff">3 Tables</text>
+
+  <rect x="920" y="280" width="140" height="70" class="data" />
+  <text x="990" y="310" class="component-text">Cloud Storage</text>
+  <text x="990" y="327" class="small-label" text-anchor="middle" fill="#ffffff">Evidence Files</text>
+  <text x="990" y="342" class="small-label" text-anchor="middle" fill="#ffffff">GCS Bucket</text>
+
+  <rect x="920" y="380" width="140" height="70" class="data" />
+  <text x="990" y="410" class="component-text">Pub/Sub</text>
+  <text x="990" y="427" class="small-label" text-anchor="middle" fill="#ffffff">Scan Events</text>
+  <text x="990" y="442" class="small-label" text-anchor="middle" fill="#ffffff">+ DLQ</text>
+
+  <rect x="920" y="480" width="140" height="70" class="data" />
+  <text x="990" y="510" class="component-text">Secret Manager</text>
+  <text x="990" y="527" class="small-label" text-anchor="middle" fill="#ffffff">GitHub Token</text>
+  <text x="990" y="542" class="small-label" text-anchor="middle" fill="#ffffff">API Keys</text>
+
+  <!-- External Services -->
+  <rect x="1100" y="180" width="110" height="60" class="external" />
+  <text x="1155" y="207" class="component-text">GitHub API</text>
+  <text x="1155" y="224" class="small-label" text-anchor="middle" fill="#ffffff">PR Creation</text>
+
+  <rect x="1100" y="280" width="110" height="60" class="external" />
+  <text x="1155" y="307" class="component-text">Vertex AI</text>
+  <text x="1155" y="324" class="small-label" text-anchor="middle" fill="#ffffff">Gemini 2.5</text>
+
+  <!-- Arrows - External to Edge -->
+  <path d="M 150 230 L 200 300" class="arrow-primary" />
+  <path d="M 150 350 L 200 330" class="arrow-primary" />
+  <path d="M 150 470 L 200 360" class="arrow" />
+
+  <!-- Edge to API -->
+  <path d="M 350 330 L 420 240" class="arrow-primary" />
+
+  <!-- API to Pub/Sub -->
+  <path d="M 560 230 L 920 410" class="arrow-primary" />
+  <text x="740" y="320" class="small-label">1. Publish Scan Event</text>
+
+  <!-- Pub/Sub to Worker -->
+  <path d="M 920 410 L 560 370" class="arrow-primary" />
+  <text x="740" y="395" class="small-label">2. Pull Message</text>
+
+  <!-- Worker to Scanner Jobs -->
+  <path d="M 490 420 L 490 460" class="arrow-primary" />
+  <text x="510" y="445" class="small-label">3. Spawn K8s Job</text>
+
+  <!-- Scanner to GitHub API -->
+  <path d="M 560 500 L 1100 210" class="arrow" />
+  <text x="830" y="350" class="small-label">6. Create PR</text>
+
+  <!-- Scanner to Vertex AI -->
+  <path d="M 560 520 L 1100 310" class="arrow" />
+  <text x="830" y="420" class="small-label">4. Generate Patches</text>
+
+  <!-- Scanner to BigQuery -->
+  <path d="M 560 480 L 920 215" class="arrow-data" />
+  <text x="740" y="350" class="small-label">7. Log Scan Data</text>
+
+  <!-- Scanner to GCS -->
+  <path d="M 560 510 L 920 315" class="arrow-data" />
+  <text x="740" y="415" class="small-label">8. Upload Evidence</text>
+
+  <!-- Scanner to Secret Manager -->
+  <path d="M 560 540 L 920 515" class="arrow-data" />
+  <text x="740" y="530" class="small-label">Auth Tokens</text>
+
+  <!-- Legend -->
+  <rect x="200" y="800" width="650" height="60" fill="#ffffff" stroke="#dadce0" stroke-width="1" rx="4" />
+  <text x="220" y="820" class="label">Legend:</text>
+
+  <rect x="280" y="810" width="40" height="15" class="pod" />
+  <text x="330" y="822" class="small-label">Core Services</text>
+
+  <rect x="450" y="810" width="40" height="15" class="job" />
+  <text x="500" y="822" class="small-label">Ephemeral Jobs</text>
+
+  <rect x="620" y="810" width="40" height="15" class="data" />
+  <text x="670" y="822" class="small-label">Data Layer</text>
+
+  <rect x="280" y="835" width="40" height="15" class="external" />
+  <text x="330" y="847" class="small-label">External APIs</text>
+
+  <line x1="450" y1="842" x2="490" y2="842" class="arrow-primary" />
+  <text x="500" y="847" class="small-label">Primary Flow</text>
+
+  <line x1="620" y1="842" x2="660" y2="842" class="arrow-data" />
+  <text x="670" y="847" class="small-label">Data Writes</text>
+
+  <!-- Phase Labels -->
+  <text x="1260" y="160" class="label">8-Phase Pipeline:</text>
+  <text x="1260" y="180" class="small-label">1. Analyze Repository</text>
+  <text x="1260" y="200" class="small-label">2. Detect Vulnerabilities</text>
+  <text x="1260" y="220" class="small-label">3. Plan Remediation</text>
+  <text x="1260" y="240" class="small-label">4. Generate Patches (LLM)</text>
+  <text x="1260" y="260" class="small-label">5. Verify Fixes (Future)</text>
+  <text x="1260" y="280" class="small-label">6. Create Pull Request</text>
+  <text x="1260" y="300" class="small-label">7. Log to BigQuery</text>
+  <text x="1260" y="320" class="small-label">8. Generate Evidence</text>
+
+  <!-- Performance Metrics -->
+  <rect x="1240" y="380" width="140" height="140" fill="#f1f3f4" stroke="#dadce0" stroke-width="1" rx="4" />
+  <text x="1250" y="400" class="label">Performance</text>
+  <text x="1250" y="420" class="small-label">P99 Latency: &lt;5 min</text>
+  <text x="1250" y="440" class="small-label">Uptime: 99.9%</text>
+  <text x="1250" y="460" class="small-label">Concurrent: 2+ scans</text>
+  <text x="1250" y="480" class="small-label">Cost: ~$626/month</text>
+  <text x="1250" y="500" class="small-label">LLM: Gemini 2.5 Pro</text>
+</svg>

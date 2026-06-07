@@ -83,7 +83,7 @@ Details of repository organization and cleanup process.
 **Time Limit:** ~2 days  
 
 ### Required Submissions
-1. ✅ GitHub repository link - https://github.com/kannavkunal/security-patch-agent
+1. ✅ GitHub repository link - https://github.com/kannavkunal/security-patch-agent-gcp-new
 2. ✅ README with install, run, test, deployment, cleanup - ../README.md, ../INSTALLATION.md
 3. ✅ PRD document - PRD.md
 4. ✅ Design notes - DESIGN_NOTES.md
@@ -94,15 +94,15 @@ Details of repository organization and cleanup process.
 ## 🎯 Evidence Package
 
 ### Example Pull Request
-- **PR #7:** https://github.com/kannavkunal/vulnerable-python-api/pull/7
+- **PR #7:** https://github.com/kannavkunal/vulnerable-python-api/pull/9
 - **Detections:** 23 vulnerabilities found
 - **Fixes:** 1 applied (conservative approach)
 - **Review:** Clean diff, reviewable changes
 
 ### Live Demo
-- **Web UI:** http://34.171.214.25/
-- **API Health:** http://34.171.214.25/health
-- **Test Endpoint:** http://34.171.214.25/test (requires API key)
+- **Web UI:** http://34.60.187.202/
+- **API Health:** http://34.60.187.202/health
+- **Test Endpoint:** http://34.60.187.202/test (requires API key)
 
 ### Architecture Diagram
 - **Location:** /Users/kkannav/Desktop/Security-Patch-Agent-Architecture.svg
@@ -184,9 +184,9 @@ gsutil cat gs://security-patch-evidence-YOUR_PROJECT_ID/kannavkunal/vulnerable-p
 - `../cleanup.sh` - Cleanup automation (root)
 
 **Evidence:**
-- GitHub repository: https://github.com/kannavkunal/security-patch-agent
-- Live demo: http://34.171.214.25
-- Example PR: https://github.com/kannavkunal/vulnerable-python-api/pull/7
+- GitHub repository: https://github.com/kannavkunal/security-patch-agent-gcp-new
+- Live demo: http://34.60.187.202
+- Example PR: https://github.com/kannavkunal/vulnerable-python-api/pull/9
 - Architecture diagram: ../Desktop/Security-Patch-Agent-Architecture.svg
 
 **Optional:**
@@ -205,14 +205,14 @@ Hi Tessera Labs Team,
 
 Please find my submission for the Security Patch Agent take-home assignment:
 
-**GitHub Repository:** https://github.com/kannavkunal/security-patch-agent
+**GitHub Repository:** https://github.com/kannavkunal/security-patch-agent-gcp-new
 
 **Key Deliverables:**
 - README with installation, deployment, testing, and cleanup: README.md, INSTALLATION.md
 - Product Requirements Document: submission-files/PRD.md
 - Design Notes: submission-files/DESIGN_NOTES.md
-- Example Pull Request: https://github.com/kannavkunal/vulnerable-python-api/pull/7
-- Live Demo: http://34.171.214.25 (Web UI + API)
+- Example Pull Request: https://github.com/kannavkunal/vulnerable-python-api/pull/9
+- Live Demo: http://34.60.187.202 (Web UI + API)
 - Architecture Diagram: Included in repository
 
 **Quick Start:**
@@ -287,5 +287,5 @@ All required materials are complete and ready for submission.
 ---
 
 **Contact:** kannavkunal@gmail.com  
-**Repository:** https://github.com/kannavkunal/security-patch-agent  
-**Live Demo:** http://34.171.214.25
+**Repository:** https://github.com/kannavkunal/security-patch-agent-gcp-new  
+**Live Demo:** http://34.60.187.202

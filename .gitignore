@@ -47,10 +47,23 @@ values.yaml.backup
 YOUR_PROJECT_ID-e492d67082b0.json
 webhook-secret.txt
 
-# Internal review documents
+# Internal review documents (for your prep, not for reviewers)
 submission-files/ASSIGNMENT_COMPLIANCE_CHECKLIST.md
 DOCUMENT_REVIEW.md
 REPOSITORY_STATUS.md
+FILES_TO_EXCLUDE.md
+WHAT_TO_COMMIT.md
+REPO_STATUS_CLEAN.md
+VIDEO_DEMO_SCRIPT.md
+SUBMISSION_PREP_TODO.md
+SUBMISSION_SUMMARY.md
+BUGFIXES.md
+INSTALLATION_NEW.md
+INSTALLATION_SIMPLIFIED.md
+SWITCH_PROJECT_GUIDE.md
+capture_evidence.sh
+submission-files/evidence/
+submission-files/CLEANUP_SUMMARY.md
 
 # Build artifacts
 *.tar.gz

@@ -73,8 +73,8 @@
 ### Implementation Score: 10/10
 
 **Production-Ready:**
-- Live system: http://34.171.214.25
-- Working PRs: https://github.com/kannavkunal/vulnerable-python-api/pull/3
+- Live system: http://34.60.187.202
+- Working PRs: https://github.com/kannavkunal/vulnerable-python-api/pull/9
 - GCS evidence: 33 markdown files generated
 - BigQuery data: Real scan analytics
 - Monitoring: 3 dashboards, 5 metrics, 3 alerts
@@ -87,17 +87,17 @@
 
 ```bash
 # Show service is running
-curl http://34.171.214.25/health
+curl http://34.60.187.202/health
 
 # Show recent scans
-curl "http://34.171.214.25/scans?limit=3" | jq .
+curl "http://34.60.187.202/scans?limit=3" | jq .
 ```
 
 ### 2. PATCH Mode Demo (2 minutes)
 
 ```bash
 # Trigger scan
-curl -X POST http://34.171.214.25/scan \
+curl -X POST http://34.60.187.202/scan \
   -H "Content-Type: application/json" \
   -d '{
     "repo_url": "https://github.com/kannavkunal/vulnerable-python-api",
@@ -238,7 +238,7 @@ A: Dependent on Semgrep rule quality. We use 2000+ battle-tested rules. Roadmap 
 3. **presentation.html** - Pitch deck ✅
 4. **TESTING_GUIDE.md** - QA procedures ✅
 5. **Source Code** - GitHub repo (public) ✅
-6. **Live Demo** - http://34.171.214.25 ✅
+6. **Live Demo** - http://34.60.187.202 ✅
 
 ### Optional Enhancements
 
@@ -268,7 +268,7 @@ A: Dependent on Semgrep rule quality. We use 2000+ battle-tested rules. Roadmap 
 
 **Contact:** kannavkunal@gmail.com  
 **GitHub:** https://github.com/kannavkunal/security-patch-agent  
-**Live System:** http://34.171.214.25  
+**Live System:** http://34.60.187.202  
 **Dashboards:** https://console.cloud.google.com/monitoring/dashboards?project=YOUR_PROJECT_ID
 
 **Category:** Security & Infrastructure Innovation  
