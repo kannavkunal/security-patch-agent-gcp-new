@@ -1,9 +1,14 @@
 #!/bin/bash
 set -e
 
-PROJECT_ID="compact-orb-498606-f9"
-CLUSTER_NAME="code-vulnerability-scanner"
-CLUSTER_REGION="us-central1"
+PROJECT_ID="${GCP_PROJECT_ID}"
+CLUSTER_NAME="${GKE_CLUSTER:-code-vulnerability-scanner}"
+CLUSTER_REGION="${GCP_LOCATION:-us-central1}"
+
+if [ -z "$PROJECT_ID" ]; then
+    echo "ERROR: GCP_PROJECT_ID environment variable is not set"
+    exit 1
+fi
 
 echo "================================================"
 echo "Setting up GCP Native Monitoring"
@@ -31,22 +36,6 @@ gcloud container clusters update $CLUSTER_NAME \
     --monitoring=SYSTEM,WORKLOAD \
     --project=$PROJECT_ID || echo "Monitoring already enabled"
 
-echo "3. Configuring Istio telemetry for Cloud Monitoring..."
-# Enable Istio telemetry
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: istio-custom-config
-  namespace: istio-system
-data:
-  mesh: |
-    enableTracing: true
-    defaultConfig:
-      tracing:
-        stackdriver: {}
-EOF
-
 echo ""
 echo "================================================"
 echo "GCP Native Monitoring Configured!"
@@ -65,9 +54,6 @@ echo "   https://console.cloud.google.com/traces/list?project=$PROJECT_ID"
 echo ""
 echo "☸️  GKE Workloads Dashboard:"
 echo "   https://console.cloud.google.com/kubernetes/workload/overview?project=$PROJECT_ID"
-echo ""
-echo "🕸️  Istio Service Mesh (Anthos Service Mesh):"
-echo "   https://console.cloud.google.com/anthos/services?project=$PROJECT_ID"
 echo ""
 echo "================================================"
 echo "Next: Creating custom dashboards in Cloud Monitoring"

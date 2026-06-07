@@ -2,13 +2,19 @@
 set -e
 
 # Configuration
-PROJECT_ID="compact-orb-498606-f9"
-CLUSTER_NAME="code-vulnerability-scanner"
-CLUSTER_REGION="us-central1"
+PROJECT_ID="${GCP_PROJECT_ID}"
+CLUSTER_NAME="${GKE_CLUSTER:-code-vulnerability-scanner}"
+CLUSTER_REGION="${GCP_LOCATION:-us-central1}"
 GSA_NAME="security-patch-agent"
-GSA_EMAIL="${GSA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
-KSA_NAME="security-patch-agent-sa"
+KSA_NAME="security-patch-agent"
 NAMESPACE="security-patch-agent"
+
+if [ -z "$PROJECT_ID" ]; then
+    echo "ERROR: GCP_PROJECT_ID environment variable is not set"
+    exit 1
+fi
+
+GSA_EMAIL="${GSA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "================================================"
 echo "Setting up Workload Identity for Security Patch Agent"

@@ -1,7 +1,12 @@
 #!/bin/bash
 
-PROJECT_ID="compact-orb-498606-f9"
-REGION="us-central1"
+PROJECT_ID="${GCP_PROJECT_ID}"
+REGION="${GCP_LOCATION:-us-central1}"
+
+if [ -z "$PROJECT_ID" ]; then
+    echo "ERROR: GCP_PROJECT_ID environment variable is not set"
+    exit 1
+fi
 
 echo "================================================"
 echo "Deployment Status Check"

@@ -5,6 +5,14 @@
 
 set -e
 
+PROJECT_ID="${GCP_PROJECT_ID}"
+REGION="${GCP_LOCATION:-us-central1}"
+
+if [ -z "$PROJECT_ID" ]; then
+    echo "ERROR: GCP_PROJECT_ID environment variable is not set"
+    exit 1
+fi
+
 echo "Retrieving API key from deployed pod..."
 echo ""
 
@@ -14,7 +22,7 @@ API_KEYS=$(gcloud logging read \
      resource.labels.namespace_name=security-patch-agent
      jsonPayload.message=~"API_KEYS"' \
     --limit=1 \
-    --project=compact-orb-498606-f9 \
+    --project=$PROJECT_ID \
     --format=json 2>/dev/null | jq -r '.[0].jsonPayload.message' || echo "")
 
 if [ -n "$API_KEYS" ]; then
@@ -28,8 +36,8 @@ else
 
     # Get credentials
     gcloud container clusters get-credentials code-vulnerability-scanner \
-        --region=us-central1 \
-        --project=compact-orb-498606-f9 2>/dev/null
+        --region=$REGION \
+        --project=$PROJECT_ID 2>/dev/null
 
     # Extract from secret
     API_KEYS=$(kubectl get secret security-patch-agent-api-keys \
@@ -54,8 +62,8 @@ else
         echo "❌ Could not retrieve API keys"
         echo ""
         echo "Manual steps:"
-        echo "1. Go to: https://github.com/kannavkunal/security-patch-agent/settings/secrets/actions"
+        echo "1. Go to your GitHub repository settings: Settings → Secrets and variables → Actions"
         echo "2. View API_KEY_PRIMARY value"
-        echo "3. Run: ./test-api.sh YOUR_API_KEY"
+        echo "3. Use the API key to test the API"
     fi
 fi
