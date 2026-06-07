@@ -1293,34 +1293,165 @@ sed -i.bak "s|http://34.171.214.25|http://$API_URL|g" test_e2e_complete.sh
 
 ## 12. Configure GitHub Webhooks (Optional)
 
-To enable automatic PR scanning (REVIEW mode), configure GitHub webhooks:
+To enable automatic PR scanning (REVIEW mode), configure GitHub webhooks on your vulnerable test repositories.
 
-### Step 12.1: Create Webhook in GitHub Repository
+### Webhook Configuration Details
 
-1. Go to your repository on GitHub
-2. Navigate to **Settings** → **Webhooks** → **Add webhook**
-3. Configure webhook:
-   - **Payload URL**: `http://$API_URL/webhook/github`
-   - **Content type**: `application/json`
-   - **Secret**: Use the `$WEBHOOK_SECRET` from earlier
-   - **Which events?**: Select **"Let me select individual events"**
-     - ✅ Pull requests
-     - ✅ Pull request reviews
-   - ✅ **Active**
-4. Click **Add webhook**
+**Payload URL:** `http://34.67.157.196/webhook/github`
 
-### Step 12.2: Test Webhook
+**Webhook Secret:** `47dca8eeae767c5f07f4967864feadcdcb34688f41022c2c8e7402662e474cd3`
+
+**Repositories to Configure:**
+1. https://github.com/kannavkunal/vulnerable-python-web
+2. https://github.com/kannavkunal/vulnerable-node-api
+3. https://github.com/kannavkunal/vulnerable-go-microservice
+4. https://github.com/kannavkunal/vulnerable-java-app
+
+### Step 12.1: Configure Webhook for Each Repository
+
+For **each** of the 4 vulnerable repositories above:
+
+1. Navigate to repository settings:
+   ```
+   https://github.com/kannavkunal/<REPO_NAME>/settings/hooks
+   ```
+
+2. Click **"Add webhook"**
+
+3. Configure webhook with these exact values:
+   - **Payload URL**: 
+     ```
+     http://34.67.157.196/webhook/github
+     ```
+   
+   - **Content type**: 
+     ```
+     application/json
+     ```
+   
+   - **Secret**: 
+     ```
+     47dca8eeae767c5f07f4967864feadcdcb34688f41022c2c8e7402662e474cd3
+     ```
+   
+   - **SSL verification**: 
+     ```
+     ☐ Disable (not required for HTTP endpoints)
+     ```
+   
+   - **Which events would you like to trigger this webhook?**:
+     ```
+     ⦿ Let me select individual events
+     
+     Events to select:
+     ☑ Pull requests
+     ☐ Pushes (uncheck this)
+     ☐ Everything else (uncheck)
+     ```
+   
+   - **Active**: 
+     ```
+     ☑ Active
+     ```
+
+4. Click **"Add webhook"**
+
+5. Verify the webhook:
+   - GitHub will send a ping event immediately
+   - Check the **"Recent Deliveries"** tab
+   - You should see a `ping` event with a green checkmark (✓)
+
+### Step 12.2: Test Webhook with a Pull Request
+
+Test one of the configured repositories:
 
 ```bash
-# Create a test PR in your repository
-# The webhook should trigger automatically
+# Clone a test repository
+git clone https://github.com/kannavkunal/vulnerable-python-web.git
+cd vulnerable-python-web
 
-# Check webhook deliveries in GitHub
-# Settings → Webhooks → Recent Deliveries
+# Create a test branch
+git checkout -b test-webhook-scan
 
-# Monitor logs
-kubectl logs -n security-patch-agent -l app=security-patch-agent -f | grep webhook
+# Make a small change
+echo "# Webhook Test" >> README.md
+git add README.md
+git commit -m "Test: Verify webhook triggers scan"
+
+# Push the branch
+git push origin test-webhook-scan
 ```
+
+Then:
+1. Open a Pull Request on GitHub
+2. Check webhook deliveries in GitHub Settings → Webhooks → Recent Deliveries
+3. You should see a `pull_request` event with status `200 OK`
+
+### Step 12.3: Monitor Scan Execution
+
+```bash
+# Monitor worker logs to see webhook events
+kubectl logs -n security-patch-agent -l app=security-patch-agent -c worker -f --insecure-skip-tls-verify
+```
+
+Expected output:
+```
+INFO:__main__:Webhook: Queueing review scan for https://github.com/kannavkunal/vulnerable-python-web PR#1
+INFO:__main__:Received scan request: {'scan_id': 'scan-...', 'mode': 'review', ...}
+```
+
+### Step 12.4: Verify PR Comment
+
+After the scan completes (2-5 minutes):
+1. Go to your Pull Request on GitHub
+2. You should see a comment from the bot with:
+   - Security findings
+   - Vulnerability details
+   - Recommendations
+   - Link to GCS evidence
+
+### Webhook Secret Management
+
+The webhook secret is stored in GCP Secret Manager:
+```bash
+# View current secret (first 10 chars)
+gcloud secrets versions access latest --secret=github-webhook-secret \
+  --project=security-patch-agent-gcp | cut -c1-10
+
+# Rotate secret if needed
+NEW_SECRET=$(openssl rand -hex 32)
+echo -n "$NEW_SECRET" | gcloud secrets versions add github-webhook-secret \
+  --project=security-patch-agent-gcp \
+  --data-file=-
+
+# Update all GitHub webhooks with new secret
+# Then restart deployment
+kubectl rollout restart deployment/security-patch-agent \
+  -n security-patch-agent --insecure-skip-tls-verify
+```
+
+### Troubleshooting Webhooks
+
+**Issue: Webhook shows "403 Forbidden"**
+```
+Cause: Repository not in VULNERABLE_REPOS whitelist
+Solution: Verify repository URL is configured in ConfigMap
+```
+
+**Issue: Webhook shows "401 Unauthorized"**
+```
+Cause: HMAC signature validation failed
+Solution: Verify webhook secret matches exactly in both GitHub and Secret Manager
+```
+
+**Issue: No scan triggered after PR**
+```
+1. Check webhook delivery status in GitHub
+2. Check worker logs for errors
+3. Verify Pub/Sub subscription is active
+```
+
+For detailed webhook setup documentation, see: [WEBHOOK_SETUP.md](./WEBHOOK_SETUP.md)
 
 ---
 
