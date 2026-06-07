@@ -390,116 +390,173 @@ http://LOADBALANCER_IP/static/index.html
 
 ## 📦 Managing Repositories
 
-### Default Whitelisted Repositories
+### 🚀 Automatic Repository Discovery (NEW!)
 
-By default, the system can only scan these repositories:
-- `https://github.com/kannavkunal/vulnerable-python-api`
-- `https://github.com/kannavkunal/vulnerable-java-app`
-- `https://github.com/kannavkunal/vulnerable-node-service`
-- `https://github.com/kannavkunal/vulnerable-go-microservice`
+**The system automatically discovers your repositories from GitHub!**
 
-**Security:** Only whitelisted repositories can be scanned (prevents abuse)
+Instead of hardcoding repository URLs, the system:
+1. ✅ Fetches your GitHub token from Secret Manager
+2. ✅ Calls GitHub API to list all your repositories
+3. ✅ Filters them based on patterns you define in ConfigMap
+4. ✅ Caches results for 5 minutes (avoids rate limits)
+5. ✅ UI automatically shows discovered repositories
 
----
-
-### Adding Your Own Repositories
-
-**To add a new repository, you need to:**
-
-**Step 1: Update Application Code (2 files)**
-
-Edit both files and add your repository URL to the `ALLOWED_REPOS` list:
-
-**File 1:** `app/main.py` (around line 187)
-```python
-ALLOWED_REPOS: ClassVar[List[str]] = [
-    "https://github.com/kannavkunal/vulnerable-python-api",
-    "https://github.com/kannavkunal/vulnerable-java-app",
-    "https://github.com/kannavkunal/vulnerable-node-service",
-    "https://github.com/kannavkunal/vulnerable-go-microservice",
-    "https://github.com/YOUR_USERNAME/YOUR_NEW_REPO",  # ← Add here
-]
-```
-
-**File 2:** `app/worker.py` (around line 18)
-```python
-ALLOWED_REPOS = [
-    "https://github.com/kannavkunal/vulnerable-python-api",
-    "https://github.com/kannavkunal/vulnerable-java-app",
-    "https://github.com/kannavkunal/vulnerable-node-service",
-    "https://github.com/kannavkunal/vulnerable-go-microservice",
-    "https://github.com/YOUR_USERNAME/YOUR_NEW_REPO",  # ← Add here
-]
-```
-
-⚠️ **Important:** Both lists must match exactly!
-
-**Step 2: Deploy Updated Configuration**
-
-```bash
-# Commit changes
-git add app/main.py app/worker.py
-git commit -m "Add YOUR_NEW_REPO to allowed repositories"
-git push origin main
-
-# Deploy via GitHub Actions
-# Go to: Actions → "Deploy Application" → Run workflow
-```
-
-**Step 3: Verify Repository Appears in UI**
-
-The Web UI automatically fetches the repository list from the `/repositories` API endpoint. After deployment:
-
-1. Refresh the Web UI: `http://LOADBALANCER_IP/static/index.html`
-2. Open the **"Repository"** dropdown
-3. Your new repository should appear automatically!
-
-**No UI changes needed** - the dropdown is populated dynamically from the backend.
+**No code changes needed** - just name your repos correctly!
 
 ---
 
-### Alternative: Use ConfigMap (Advanced)
+### Repository Filtering (ConfigMap)
 
-For easier repository management without code changes, you can use a Kubernetes ConfigMap:
-
-**Option A: Store in ConfigMap**
+Repositories are filtered using these rules in the ConfigMap:
 
 ```yaml
 # deployment/k8s-manifests/04-configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: security-patch-agent-config
-  namespace: security-patch-agent
 data:
-  ALLOWED_REPOS: |
-    https://github.com/kannavkunal/vulnerable-python-api
-    https://github.com/kannavkunal/vulnerable-java-app
-    https://github.com/YOUR_USERNAME/YOUR_NEW_REPO
+  # GitHub usernames or organizations (comma-separated)
+  ALLOWED_REPO_OWNERS: "kannavkunal"
+  
+  # Glob pattern to match repository names
+  ALLOWED_REPO_PATTERN: "vulnerable-*"
+  
+  # Specific repos to exclude (comma-separated)
+  EXCLUDED_REPOS: ""
+  
+  # Cache duration in seconds (default: 300 = 5 minutes)
+  REPO_CACHE_TTL: "300"
 ```
 
-**Modify code to read from environment:**
+**Example:**
+- If you have repos: `vulnerable-python-api`, `vulnerable-java-app`, `my-project`, `production-app`
+- With pattern: `vulnerable-*`
+- **Allowed:** `vulnerable-python-api`, `vulnerable-java-app` ✅
+- **Filtered out:** `my-project`, `production-app` ❌
 
-```python
-# app/main.py
-import os
+---
 
-ALLOWED_REPOS: ClassVar[List[str]] = [
-    repo.strip() 
-    for repo in os.getenv("ALLOWED_REPOS", "").split("\n")
-    if repo.strip()
-]
-```
+### How to Add a New Repository
 
-**Then update ConfigMap and restart pods:**
+**Option 1: Automatic (Recommended) - Just Name It Correctly!**
 
 ```bash
-kubectl apply -f deployment/k8s-manifests/04-configmap.yaml
+# Create a new GitHub repository with name matching pattern
+gh repo create vulnerable-nodejs-app --public
+
+# That's it! The system will automatically discover it.
+# No code changes. No deployment needed.
+
+# To see it immediately (without waiting for cache):
+kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
+
+# Check /repositories endpoint:
+curl http://LOADBALANCER_IP/repositories
+```
+
+**Option 2: Change the Pattern**
+
+To scan repos with different naming:
+
+```bash
+# Edit ConfigMap
+kubectl edit configmap security-patch-agent-config -n security-patch-agent
+
+# Change ALLOWED_REPO_PATTERN from "vulnerable-*" to "test-*" or "*" (all repos)
+# Save and exit
+
+# Restart pods to apply changes
 kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
 ```
 
-**Pros:** No code changes needed to add repos  
-**Cons:** Requires ConfigMap edit + pod restart
+**Option 3: Add Multiple Owners**
+
+To scan repos from different GitHub users/organizations:
+
+```bash
+# Edit ConfigMap
+kubectl edit configmap security-patch-agent-config -n security-patch-agent
+
+# Change ALLOWED_REPO_OWNERS: "kannavkunal,myorg,another-user"
+# Save and exit
+
+# Restart pods
+kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
+```
+
+**Option 4: Exclude Specific Repos**
+
+To prevent certain repos from being scanned:
+
+```bash
+# Edit ConfigMap
+kubectl edit configmap security-patch-agent-config -n security-patch-agent
+
+# Change EXCLUDED_REPOS: "vulnerable-test,vulnerable-demo"
+# Save and exit
+
+# Restart pods
+kubectl rollout restart deployment/security-patch-agent -n security-patch-agent
+```
+
+---
+
+### Verify Repository Discovery
+
+**Check which repositories are allowed:**
+
+```bash
+# Via API
+curl http://LOADBALANCER_IP/repositories
+
+# Response:
+{
+  "repositories": [
+    "https://github.com/kannavkunal/vulnerable-python-api",
+    "https://github.com/kannavkunal/vulnerable-java-app",
+    ...
+  ],
+  "count": 4,
+  "filters": {
+    "owners": ["kannavkunal"],
+    "pattern": "vulnerable-*",
+    "excluded": []
+  },
+  "cache_ttl": 300
+}
+```
+
+**Check pod logs for discovery:**
+
+```bash
+kubectl logs -n security-patch-agent deployment/security-patch-agent -c api --tail=50 | grep "Discovered"
+
+# Expected output:
+# Discovered 4 allowed repositories
+# ✓ kannavkunal/vulnerable-python-api
+# ✓ kannavkunal/vulnerable-java-app
+# ...
+```
+
+---
+
+### Advanced: Change Filters via GitHub Actions
+
+Update the workflows to use different filters:
+
+**Edit:** `.github/workflows/full-deployment.yml` and `.github/workflows/deploy-application.yml`
+
+```yaml
+# Change these lines in ConfigMap creation:
+--from-literal=ALLOWED_REPO_OWNERS="your-username,your-org" \
+--from-literal=ALLOWED_REPO_PATTERN="security-*" \
+--from-literal=EXCLUDED_REPOS="security-test" \
+```
+
+Then commit and deploy:
+```bash
+git add .github/workflows/*.yml
+git commit -m "Update repository filters"
+git push origin main
+# Run "Deploy Application" workflow
+```
 
 ---
 
